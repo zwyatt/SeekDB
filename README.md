@@ -1,5 +1,5 @@
 # SeekDB
-Plugin to report and store Seekers clanskill Seek data.
+Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Installation
 1. Download the raw SeekDB.xml and SeekDB.lua files.
