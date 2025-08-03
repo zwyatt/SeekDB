@@ -29,6 +29,7 @@ Data is stored in SeekDB.db.
 - It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
 
 ## Future Updates
+- Make it easier to target non-immunities
 - Trigger on seek rather than using seekrep
 - Scan and con overwriting
 - Scan for mobs missing from database
