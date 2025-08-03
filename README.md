@@ -40,4 +40,4 @@ Data is stored in SeekDB.db.
 - Anssett: SeekRep 
 - Crowley: SnD
 - Fiendish: Aardwolf MUSHclient, GMCP Handler,  Stat Monitor
-- Nick Gammon: MUSHclient
+- Nick Gammon: MUSHclient, all the documentation
