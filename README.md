@@ -1,2 +1,40 @@
 # SeekDB
 Plugin to report and store Seekers clanskill Seek data.
+
+## Installation
+1. Download the raw SeekDB.xml and SeekDB.lua files.
+2. Move them to your Aardwolf\worlds\plugins folder.
+3. In MUSHclient, File->Plugins, click Add, open SeekDB.xml.
+
+## Usage
+###seekrep <mob>
+- Seek the mob and add it to the database if it does not already exist.
+###seekdb <mob> <area>
+- Search the database and display the results in miniwindow and output.
+
+By default, the miniwindow displays the current enemy and See
+
+Mob weaknesses are shown in green, in order from weakest to strongest.
+Mob strengths are shown in orange (magenta in the output), in order from strongest to weakest.
+Mob immunites are shown in red.
+
+Strengths and weaknesses below 10% are not shown.
+
+## Known Issues
+- Seekrep and seekdb only take one keyword as a name argument.
+- Whois will trigger the seekrep capture if the seek fails and the capture hasn't timed out yet, throwing an error. (Don't use whois after failed seek.)
+- Similarly, manually using seek after a failed seekrep seek will throw an error.
+- It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
+
+## Future Updates
+- Trigger on seek rather than using seekrep
+- Scan and con overwriting
+- Scan for mobs missing from database
+- Database backups
+- Plugin updating
+
+## Credits
+- Anssett: SeekRep 
+- Crowley: SnD
+- Fiendish: Aardwolf MUSHclient, Mapper, Statmon
+- Nick Gammon: MUSHclient
