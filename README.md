@@ -7,9 +7,9 @@ Plugin to report and store Seekers clanskill Seek data.
 3. In MUSHclient, File->Plugins, click Add, open SeekDB.xml.
 
 ## Usage
-###seekrep <mob>
+### seekrep <mob>
 - Seek the mob and add it to the database if it does not already exist.
-###seekdb <mob> <area>
+### seekdb <mob> <area>
 - Search the database and display the results in miniwindow and output.
 
 By default, the miniwindow displays the current enemy and See
