@@ -3,7 +3,7 @@ require 'aardwolf_colors'
 require 'tprint'
 
 function seekFail()
-  Note("something broke. Or seek failed and you need to try again.")
+  Note("Something broke, or seek failed and you need to try again.")
 end
 
 function initTarget()
@@ -135,13 +135,22 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. " General Use " .. borderColor .. "==--")
   Note()
+  colorsToAnsiNote(borderColor .. "- " .. textColor .. "Add a mob to the database (and report seek too, I guess) " .. borderColor .. "-")
   colorsToAnsiNote(cmdColor .. "seekrep <target> [top|bot] [quantity]")
-  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "    Required. Single keyword of target. Ordinal targets are ok (1.lasher, 2.lasher, etc.)")
-  colorsToAnsiNote(textColor .. "               multiple words or quotes are not.")
-  colorsToAnsiNote(cmdColor .. "   [top|bot|immcheck|all|verbose]" .. textColor .. "   Optional. If nothing given, defaults to " .. cmdColor .. "bot" .. textColor .. ". " .. cmdColor .. "bot" .. textColor .. " sorts ascending, " .. cmdColor .. "top" .. textColor .. " sorts descending.")
-  colorsToAnsiNote(cmdColor .. "               immcheck" .. textColor .. " returns non-immune damtypes. " .. cmdColor .."all" .. textColor .. " does a rewrite of seek output to include 0 value resists instead of hiding them. ")
+  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "    Required. Single keyword of target. Ordinal targets are ok (1.lasher,")
+  colorsToAnsiNote(textColor .. "               2.lasher, etc.) multiple words or quotes are not.")
+  colorsToAnsiNote(cmdColor .. "   [top|bot|immcheck|all|verbose]" .. textColor .. "   Optional. If nothing given, defaults to " .. cmdColor .. "bot" .. textColor .. ". " .. cmdColor)
+  colorsToAnsiNote(cmdColor .. "               bot" .. textColor .. " sorts ascending, " .. cmdColor .. "top" .. textColor .. " sorts descending.")
+  colorsToAnsiNote(cmdColor .. "               immcheck" .. textColor .. " returns non-immune damtypes. " .. cmdColor .."all" .. textColor .. " does a rewrite of seek output to")
+  colorsToAnsiNote(textColor .. "                        include 0 value resists instead of hiding them.")
   colorsToAnsiNote(cmdColor .. "               verbose" .. textColor .. " is mostly used for debugging right now.")
   colorsToAnsiNote(cmdColor .. "   [quantity]" .. textColor .. "  Optional. Restricts quantity of results.")
+  Note()
+  colorsToAnsiNote(borderColor .. "- " .. textColor .. "Search for a mob in the database " .. borderColor .. "-")
+  colorsToAnsiNote(cmdColor .. "seekdb <target> <area>")
+  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "   Optional. Single keyword of target.")
+  colorsToAnsiNote(cmdColor .. "   <area>" .. textColor .. "     Optional. Defaults to current area. Requires " .. cmdColor .. "<target> " .. textColor .. "argument and must match")
+  colorsToAnsiNote(textColor .. "              area keyword exactly.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples   " .. borderColor .. "==--")
   Note()
@@ -149,10 +158,11 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher 5" .. textColor .. "      Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his lowest 5 resistances.")
   Note()
-  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Updating   " .. borderColor .. "==--")
+  colorsToAnsiNote(cmdColor .. "seekdb" .. textColor .. "                Searches DB for all mobs in the area.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekrep update check" .. textColor .. "   Checks if there's an update to the plugin.")
-  colorsToAnsiNote(cmdColor .. "seekrep update install" .. textColor .. " Installs any available updates to this plugin.")
+  colorsToAnsiNote(cmdColor .. "seekdb imp" .. textColor .. "            Searches DB for all mobs with 'imp' in the name in the current area.")
+  Note()
+  colorsToAnsiNote(cmdColor .. "seekrep imp aylor" .. textColor .. "     Searches DB for all mobs with 'imp' in the name in the area 'aylor'.")
   colorsToAnsiNote(borderColor .. "--------------------------------------------------")
 end
 
@@ -565,6 +575,19 @@ NOTE_COLORS = {
     DEBUG_HIGHLIGHT = "#FFD700"
 }
 
+
+function debug_toggle()
+  if debug_mode == "on" then
+    DebugNote("Debug mode is now off.")
+    debug_mode = "off"
+  else
+    debug_mode = "on"
+    DebugNote("Debug mode is now on.")
+  end
+  SetVariable("debug_mode", debug_mode)
+end
+
+
 -- Credit: Crowley SnD
 function DebugNote(...)
     if debug_mode == "on" then
@@ -593,26 +616,30 @@ function merge(xs, ys)
   return xs
 end
 
+evil = "@r"
+neutral = "@w"
+good = "@y"
+
 aligns = {}
-aligns["a Harbinger of Doom"] = "@r"
-aligns["a Lord of Ruin"] = "@r"
-aligns["an Avatar of Darkness"] = "@r"
-aligns["an Emissary of Evil"] = "@r"
-aligns["diabolical"] = "@r"
-aligns["nefarious"] = "@r"
-aligns["wicked"] = "@r"
+aligns["a Harbinger of Doom"] = evil
+aligns["a Lord of Ruin"] = evil
+aligns["an Avatar of Darkness"] = evil
+aligns["an Emissary of Evil"] = evil
+aligns["diabolical"] = evil
+aligns["nefarious"] = evil
+aligns["wicked"] = evil
 
-aligns["grey"] = "@w"
-aligns["kind"] = "@w"
-aligns["neutral"] = "@w"
+aligns["grey"] = neutral
+aligns["kind"] = neutral
+aligns["neutral"] = neutral
 
-aligns["a Harbinger of Hope"] = "@y"
-aligns["an Avatar of Light"] = "@y"
-aligns["a Lord of Angels"] = "@y"
-aligns["an Emissary of Good"] = "@y"
-aligns["angelic"] = "@y"
-aligns["saintly"] = "@y"
-aligns["seraphic"] = "@y"
+aligns["a Harbinger of Hope"] = good
+aligns["an Avatar of Light"] = good
+aligns["a Lord of Angels"] = good
+aligns["an Emissary of Good"] = good
+aligns["angelic"] = good
+aligns["saintly"] = good
+aligns["seraphic"] = good
 
 function align_colour(align)
   return aligns[align]
@@ -869,7 +896,7 @@ end -- read_target --
 ]]--
 function format_output(mob)
   DebugNote("Formatting output for seekdb results:")
-  local output = align_colour(mob.align) .. mob.name .. " "
+  local output = align_colour(mob.align) .. "(" .. neutral .. mob.name .. align_colour(mob.align) .. ")"
   local weak = "" 
   local strong = ""
   local immune = ""
@@ -1120,7 +1147,9 @@ function window_target()
   name = mob.name or mob.keyword
   area = mob.area or get_area()
   snd_target = window_search_db(area, name, exists(mob.keyword))
-  tprint(snd_target)
+  if debug_mode == "on" then
+    tprint(snd_target)
+  end
   snd_target.name = "Target: " .. name
 end
 
@@ -1440,6 +1469,4 @@ function get_plugin_file()
         ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
     end
 end
-
 ------------------------ End Plugin Update Code -----------------------
-

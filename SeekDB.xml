@@ -37,14 +37,13 @@ Seek clanskill ouput reporter and database.
 
 <aliases>
   <alias match="^seekrep\s(?<name>((\d*\.)?\w+))\s?(?<dir>(top|bot|all|immcheck|verbose))?\s?(?<qty>\d+)?" script="startSeek" regexp="y" enabled="y" group="seekrep" send_to="12" sequence="100" ></alias>
-  <alias match="^seekdb\s(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>
+  <alias match="^seekdb\s?(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>
   <alias script="OnHelp" match="seekrep help" enabled="y"></alias>
-  <alias match="seekrep update check" enabled="y" script="update_check_alias" sequence="99"/>
-  <alias match="seekrep update install" enabled="y" script="update_install_alias" sequence="99"/>
 
   <alias match="^seekrep config(\s((?<command>(channel|rvcolor|rncolor|sepcolor|output)) (?<value>.+)))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config(\s((?<command>(output)) (?<value>(echo|channel|both))))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config (?<command>reset|help)$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
+  <alias match="^seekdb debug$" enabled="y" regexp="y" script="debug_toggle" sequence="99"></alias>
 </aliases>
 
 <!--  Script  -->
