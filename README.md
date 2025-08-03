@@ -39,5 +39,5 @@ Data is stored in SeekDB.db.
 ## Credits
 - Anssett: SeekRep 
 - Crowley: SnD
-- Fiendish: Aardwolf MUSHclient, GMCP Handler, Mapper, Statmon
+- Fiendish: Aardwolf MUSHclient, GMCP Handler,  Stat Monitor
 - Nick Gammon: MUSHclient
