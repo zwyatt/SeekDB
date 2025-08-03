@@ -7,7 +7,7 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 3. In MUSHclient, File->Plugins, click Add, open SeekDB.xml.
 
 ## Usage
-### Seek the mob and add it to the database (if it does not already exist):
+### Seek the target and add it to the database (if it does not already exist):
 ```
 seekrep <target>
 ```
