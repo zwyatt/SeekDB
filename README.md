@@ -2,6 +2,7 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Installation
+Built on and replaces Anssett's SeekRep plugin. Only have one installed.
 1. Download the raw SeekDB.xml and SeekDB.lua files.
 2. Move them to your Aardwolf\worlds\plugins folder.
 3. In MUSHclient, File->Plugins, click Add, open SeekDB.xml.
