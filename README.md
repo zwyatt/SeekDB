@@ -12,7 +12,7 @@ Plugin to report and store Seekers clanskill Seek data.
 ### seekdb <mob> <area>
 - Search the database and display the results in miniwindow and output.
 
-By default, the miniwindow displays the current enemy and See
+By default, the miniwindow displays the current enemy and SnD target.
 
 Mob weaknesses are shown in green, in order from weakest to strongest.
 Mob strengths are shown in orange (magenta in the output), in order from strongest to weakest.
