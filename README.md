@@ -20,6 +20,8 @@ Mob immunites are shown in red.
 
 Strengths and weaknesses below 10% are not shown.
 
+Data is stored in SeekDB.db.
+
 ## Known Issues
 - Seekrep and seekdb only take one keyword as a name argument.
 - Whois will trigger the seekrep capture if the seek fails and the capture hasn't timed out yet, throwing an error. (Don't use whois after failed seek.)
