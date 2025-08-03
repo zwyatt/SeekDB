@@ -483,8 +483,8 @@ end
 
 ----------------------- Database Code -----------------------
 local db_path = GetPluginInfo(GetPluginID(), 20) .. "SeekDB.db"
--- db = sqlite3.open(db_path)
-db = sqlite3.open_memory()
+db = sqlite3.open(db_path)
+-- db = sqlite3.open_memory()
 
 db:exec[[
   CREATE TABLE IF NOT EXISTS mob (
@@ -1442,3 +1442,4 @@ function get_plugin_file()
 end
 
 ------------------------ End Plugin Update Code -----------------------
+
