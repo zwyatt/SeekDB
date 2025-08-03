@@ -551,7 +551,7 @@ db:exec[[
 --[[ Helpers ]]--
 
 -- Credit: Crowley SnD
-local debug_mode = GetVariable("debug_mode") or "on" -- ***
+local debug_mode = GetVariable("debug_mode") or "off" -- ***
 NOTE_COLORS = {
     INFO = "#FF5000",
     INFO_HIGHLIGHT = "#00B4E0",
@@ -1440,4 +1440,5 @@ function get_plugin_file()
         ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
     end
 end
+
 ------------------------ End Plugin Update Code -----------------------
