@@ -896,7 +896,7 @@ end -- read_target --
 ]]--
 function format_output(mob)
   DebugNote("Formatting output for seekdb results:")
-  local output = align_colour(mob.align) .. "(" .. neutral .. mob.name .. align_colour(mob.align) .. ")"
+  local output = align_colour(mob.align) .. "(" .. neutral .. mob.name .. align_colour(mob.align) .. ") "
   local weak = "" 
   local strong = ""
   local immune = ""
