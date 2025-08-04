@@ -1,4 +1,4 @@
---   version="1.11"
+--   version="1.12"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -1438,7 +1438,9 @@ function update_plugin(mode)
 end
 
 function get_plugin_file()
-  local urlThread = async.request(plugin_url, plugin_protocol)
+  local loc_plugin_url = plugin_url
+  local loc_pluginFile = pluginFile
+  local urlThread = async.request(loc_plugin_url, plugin_protocol)
 
   if not urlThread then
     note_error("Couldn't create async url request.")
@@ -1478,7 +1480,7 @@ function get_plugin_file()
   elseif (update_mode == "install") then
     ColourNote("white", "", plugin_prefix .. " Updating plugin from version " .. currentVerStr .. " to version " .. remoteVerStr) 
 
-    local file = io.open(pluginFile, "wb")
+    local file = io.open(loc_pluginFile, "wb")
     file:write(pluginData)
     file:close()
     reload_plugin()
