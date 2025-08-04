@@ -39,7 +39,6 @@ Data is stored in SeekDB.db.
 - Scan and con overwriting
 - Scan for mobs missing from database
 - Database backups
-- Plugin updating
 - Miscellaneous other stuff probably
 
 ## Credits
