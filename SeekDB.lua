@@ -3,7 +3,7 @@ require 'aardwolf_colors'
 require 'tprint'
 
 function seekFail()
-  Note("Something broke, or seek failed and you need to try again.")
+  Note("Seek capture timed out. Seek failed or something broke.")
 end
 
 function initTarget()
@@ -162,7 +162,12 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(cmdColor .. "seekdb imp" .. textColor .. "            Searches DB for all mobs with 'imp' in the name in the current area.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekrep imp aylor" .. textColor .. "     Searches DB for all mobs with 'imp' in the name in the area 'aylor'.")
+  colorsToAnsiNote(cmdColor .. "seekdb imp aylor" .. textColor .. "      Searches DB for all mobs with 'imp' in the name in the area 'aylor'.")
+    Note()
+  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Updating   " .. borderColor .. "==--")
+  Note()
+  colorsToAnsiNote(cmdColor .. "seekdb update check" .. textColor .. "   Checks if there's an update to the plugin.")
+  colorsToAnsiNote(cmdColor .. "seekdb update install" .. textColor .. " Installs any available updates to this plugin.")
   colorsToAnsiNote(borderColor .. "--------------------------------------------------")
 end
 
@@ -1379,94 +1384,106 @@ end
 -- Code taken from Durel's dinv plugin, originally via Crowley
 require("wait")
 require("async")
-json = require("json")
 
-plugin_url = "https://raw.githubusercontent.com/Anssett/Aard-Plugins/main/SeekRep/SeekRep.xml"
-SetVariable("DownloadURL", plugin_url)
+file_url = ""
+xml_url = "https://raw.githubusercontent.com/zwyatt/SeekDB/refs/heads/main/SeekDB.xml"
+lua_url = "https://raw.githubusercontent.com/zwyatt/SeekDB/refs/heads/main/SeekDB.lua"
+
+pluginFile = ""
+xml_path = GetPluginInfo(GetPluginID(), 6) -- SeekDB.xml
+lua_path = Replace(xml_path, "SeekDB.xml", "SeekDB.lua")
+
+
 plugin_protocol = "HTTPS"
-plugin_prefix = "[SeekRep]"
- 
+plugin_prefix = "[SeekDB]"
+
 function update_check_alias()
   update_plugin("check")
   ColourNote("white", "", plugin_prefix .. " Checking for updated version...")
 end
- 
+
 function update_install_alias()
-    update_plugin("install")
-    ColourNote("white", "", plugin_prefix .. " Checking for and installing updated version...")
+  update_plugin("install")
+  ColourNote("white", "", plugin_prefix .. " Checking for and installing updated version...")
 end
- 
+
 function reload_plugin()
-    local scriptPrefix = GetAlphaOption("script_prefix")
-    local retval
- 
-    -- If the user has not already specified the script prefix for this version of mush, pick a
-    -- reasonable default value
-    if (scriptPrefix == "") then
-        scriptPrefix = "\\\\\\"
-        SetAlphaOption("script_prefix", scriptPrefix)
-    end
- 
-    -- Tell mush to reload the plugin in one second.  We can't do it directly here because a
-    -- plugin can't unload itself.  Even if it could, how could it tell mush to load it again
-    -- if it weren't installed? 
-    retval = Execute(scriptPrefix.."DoAfterSpecial(0.1, \"ReloadPlugin('"..GetPluginID().."')\", sendto.script)")
+  local scriptPrefix = GetAlphaOption("script_prefix")
+  local retval
+
+  -- If the user has not already specified the script prefix for this version of mush, pick a
+  -- reasonable default value
+  if (scriptPrefix == "") then
+    scriptPrefix = "\\\\\\"
+    SetAlphaOption("script_prefix", scriptPrefix)
+  end
+
+  -- Tell mush to reload the plugin in one second.  We can't do it directly here because a
+  -- plugin can't unload itself.  Even if it could, how could it tell mush to load it again
+  -- if it weren't installed? 
+  retval = Execute(scriptPrefix.."DoAfterSpecial(0.1, \"ReloadPlugin('"..GetPluginID().."')\", sendto.script)")
 end
- 
+
 function update_plugin(mode)
-    update_mode = mode
- 
-    wait.make(get_plugin_file)
+  update_mode = mode
+  
+  plugin_url = xml_url
+  pluginFile = xml_path
+  wait.make(get_plugin_file)
+  
+  plugin_url = lua_url
+  pluginFile = lua_path
+  wait.make(get_plugin_file)
 end
- 
+
 function get_plugin_file()
   local urlThread = async.request(plugin_url, plugin_protocol)
- 
+
   if not urlThread then
     note_error("Couldn't create async url request.")
     return
   end
- 
+
   local timeout = 10
   local totTime = 0
   while (urlThread:alive() and totTime < timeout) do
     wait.time(0.1)
     totTime = totTime + 0.1
   end
- 
+
   local remoteRet, pluginData, status, headers, fullStatus = urlThread:join()
- 
+
   if not status then
-    ColourNote("red", "", plugin_prefix .. " Couldn't download plugin file. No status code.")       
+    ColourNote("red", "", plugin_prefix .. " Couldn't download plugin file. No status code.")
     return
   end
- 
+
   if (status ~= 200) then
     ColourNote("red", "", plugin_prefix .. " Plugin file request status code: " .. status .. ": " .. fullStatus)
     return
   end
-     
-    local currentVersion = GetPluginInfo(GetPluginID(), 19) or 0
-    local currentVerStr  = string.format("%1.3f", currentVersion)
-    local remoteVerStr   = string.match(pluginData, '%s%s+version="([0-9%.]+)"')
-    local remoteVersion  = tonumber(remoteVerStr or "") or 0
- 
-    if remoteVersion == currentVersion then
-        ColourNote("white", "", plugin_prefix .. " You are running the most recent version (v" .. currentVerStr .. ")")
-    elseif (remoteVersion < currentVersion) then
-        ColourNote("white", "", plugin_prefix .. " You have a newer version than is publicly available. (v" .. currentVerStr .. ")")
-    elseif (update_mode == "check") then
-        ColourNote("white", "", plugin_prefix .. " You are running v" .. currentVerStr .. ", but there's a newer version v" .. remoteVerStr)
-    elseif (update_mode == "install") then
-        ColourNote("white", "", plugin_prefix .. " Updating plugin from version " .. currentVerStr .. " to version " .. remoteVerStr) 
- 
-        local pluginFile = GetPluginInfo(GetPluginID(), 6)
-        local file = io.open(pluginFile, "wb")
-        file:write(pluginData)
-        file:close()
-        reload_plugin()
-    else
-        ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
-    end
+
+  local currentVersion = GetPluginInfo(GetPluginID(), 19) or 0
+  local currentVerStr  = string.format("%1.3f", currentVersion)
+  local remoteVerStr   = string.match(pluginData, '%s%s+version="([0-9%.]+)"')
+  local remoteVersion  = tonumber(remoteVerStr or "") or 0
+
+  if remoteVersion == currentVersion then
+    ColourNote("white", "", plugin_prefix .. " You are running the most recent version (v" .. currentVerStr .. ")")
+  elseif (remoteVersion < currentVersion) then
+    ColourNote("white", "", plugin_prefix .. " You have a newer version than is publicly available. (v" .. currentVerStr .. ")")
+  elseif (update_mode == "check") then
+    ColourNote("white", "", plugin_prefix .. " You are running v" .. currentVerStr .. ", but there's a newer version v" .. remoteVerStr)
+  elseif (update_mode == "install") then
+    ColourNote("white", "", plugin_prefix .. " Updating plugin from version " .. currentVerStr .. " to version " .. remoteVerStr) 
+
+    -- local pluginFile = GetPluginInfo(GetPluginID(), 6) ***
+    local file = io.open(pluginFile, "wb")
+    file:write(pluginData)
+    file:close()
+    reload_plugin()
+  else
+    ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
+  end
 end
------------------------- End Plugin Update Code -----------------------
+----------------------- End Plugin Update Code -----------------------
