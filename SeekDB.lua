@@ -1,4 +1,4 @@
---   version="1.1"
+--   version="1.11"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -179,8 +179,8 @@ function startSeek(name, line, args)
   initTarget()
 
   local command = "seek " .. target
-  local startTag = "^\\-+$"
-  local endTag = "^\\-+$"
+  local startTag = "^----------------------------------------------------------------$"
+  local endTag = "^----------------------------------------------------------------$"
   local tagsAreRegex=true
   local noCommandEcho=false
   local omitResponse=true
@@ -567,7 +567,7 @@ db:exec[[
 --[[ Helpers ]]--
 
 -- Credit: Crowley SnD
-local debug_mode = GetVariable("debug_mode") or "off" -- ***
+local debug_mode = GetVariable("debug_mode") or "off"
 NOTE_COLORS = {
     INFO = "#FF5000",
     INFO_HIGHLIGHT = "#00B4E0",
