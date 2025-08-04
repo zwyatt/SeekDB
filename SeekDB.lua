@@ -1,4 +1,4 @@
---   version="1.12"
+--   version="1.13"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -1386,7 +1386,7 @@ end
 require("wait")
 require("async")
 
-file_url = ""
+plugin_url = ""
 xml_url = "https://raw.githubusercontent.com/zwyatt/SeekDB/refs/heads/main/SeekDB.xml"
 lua_url = "https://raw.githubusercontent.com/zwyatt/SeekDB/refs/heads/main/SeekDB.lua"
 
@@ -1425,8 +1425,11 @@ function reload_plugin()
   retval = Execute(scriptPrefix.."DoAfterSpecial(0.1, \"ReloadPlugin('"..GetPluginID().."')\", sendto.script)")
 end
 
+reload_ready = false
+
 function update_plugin(mode)
   update_mode = mode
+  reload_ready = false
   
   plugin_url = xml_url
   pluginFile = xml_path
@@ -1483,7 +1486,11 @@ function get_plugin_file()
     local file = io.open(loc_pluginFile, "wb")
     file:write(pluginData)
     file:close()
-    reload_plugin()
+    if reload_ready then
+      reload_plugin()
+    else
+      reload_ready = true
+    end
   else
     ColourNote("red", "", plugin_prefix .. " Invalid update mode: " .. update_mode)
   end
