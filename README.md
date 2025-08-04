@@ -1,7 +1,7 @@
 # SeekDB
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
-## Updates: 1.1 and 1.11
+## Updates:
 - Added update functionality
 - No longer triggers on whois or identify after a failed seekrep seek
 
