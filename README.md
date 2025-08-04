@@ -45,6 +45,6 @@ Data is stored in SeekDB.db.
 
 ## Credits
 - Anssett: SeekRep 
-- Crowley: SnD
+- Crowley: Plugin Updating, SnD
 - Fiendish: Aardwolf MUSHclient, GMCP Handler,  Stat Monitor
 - Nick Gammon: MUSHclient, all the documentation
