@@ -1,4 +1,4 @@
--- version="1.1"
+--   version="1.1"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -1478,7 +1478,6 @@ function get_plugin_file()
   elseif (update_mode == "install") then
     ColourNote("white", "", plugin_prefix .. " Updating plugin from version " .. currentVerStr .. " to version " .. remoteVerStr) 
 
-    -- local pluginFile = GetPluginInfo(GetPluginID(), 6) ***
     local file = io.open(pluginFile, "wb")
     file:write(pluginData)
     file:close()
