@@ -30,7 +30,6 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
-- Update doesn't version the .lua file correctly
 - Seekrep and seekdb only take one keyword as a name argument.
 - Whois will trigger the seekrep capture if the seek fails and the capture hasn't timed out yet, throwing an error.
 - Similarly, manually using seek after a failed seekrep seek will throw an error.
