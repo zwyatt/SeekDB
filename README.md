@@ -1,6 +1,10 @@
 # SeekDB
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
+## Updates: 1.1 and 1.11
+- Added update functionality
+- No longer triggers on whois or identify after a failed seekrep seek
+
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
 1. Download the raw SeekDB.xml and SeekDB.lua files.
