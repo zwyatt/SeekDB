@@ -30,9 +30,8 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
+- Whois, manual seek, and identify (including ADB auto identify) will trigger seekrep capture after a seekrep seek failure if it hasn't timed out yet, throwing an error.
 - Seekrep and seekdb only take one keyword as a name argument.
-- Whois will trigger the seekrep capture if the seek fails and the capture hasn't timed out yet, throwing an error.
-- Similarly, manually using seek after a failed seekrep seek will throw an error.
 - It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
 
 ## Future Updates
