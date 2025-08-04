@@ -34,7 +34,7 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
-- Update functionality currently nondeterministic using wait and async for two files
+- Using seekrep too quickly can cause duplicate malformed database entries
 - Seekrep and seekdb only take one keyword as a name argument.
 - It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
 
