@@ -2,6 +2,10 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+- Seekrep now has a 2 second cooldown to prevent data corruption
+- 
+
+### Previous
 - Added update functionality
 - No longer triggers on whois or identify after a failed seekrep seek
 
