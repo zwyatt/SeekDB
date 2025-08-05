@@ -1,10 +1,13 @@
---   version="1.13"
+--   version="1.14"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
 
+seekrep_ready = true
+
 function seekFail()
-  Note("Seek capture timed out. Seek failed or something broke.")
+  Note("Seek capture timed out. Try again.")
+  seekrep_ready = true
 end
 
 function initTarget()
@@ -149,8 +152,8 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(borderColor .. "- " .. textColor .. "Search for a mob in the database " .. borderColor .. "-")
   colorsToAnsiNote(cmdColor .. "seekdb <target> <area>")
-  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "   Optional. Single keyword of target.")
-  colorsToAnsiNote(cmdColor .. "   <area>" .. textColor .. "     Optional. Defaults to current area. Requires " .. cmdColor .. "<target> " .. textColor .. "argument and must match")
+  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "   Optional. Single keyword of target. 'all' to search for all mobs in the area.")
+  colorsToAnsiNote(cmdColor .. "   <area>" .. textColor .. "     Optional. Defaults to current area. 'all' to search in every area. Must match")
   colorsToAnsiNote(textColor .. "              area keyword exactly.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples   " .. borderColor .. "==--")
@@ -159,12 +162,12 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher 5" .. textColor .. "      Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his lowest 5 resistances.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekdb" .. textColor .. "                Searches DB for all mobs in the area.")
-  Note()
   colorsToAnsiNote(cmdColor .. "seekdb imp" .. textColor .. "            Searches DB for all mobs with 'imp' in the name in the current area.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekdb imp aylor" .. textColor .. "      Searches DB for all mobs with 'imp' in the name in the area 'aylor'.")
-    Note()
+  colorsToAnsiNote(cmdColor .. "seekdb all aylor" .. textColor .. "      Searches DB for all mobs in the area 'aylor'.")
+  Note()
+  colorsToAnsiNote(cmdColor .. "seekdb imp all" .. textColor .. "        Searches DB for all mobs with 'imp' in the name.")
+  Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Updating   " .. borderColor .. "==--")
   Note()
   colorsToAnsiNote(cmdColor .. "seekdb update check" .. textColor .. "   Checks if there's an update to the plugin.")
@@ -172,7 +175,13 @@ function OnHelp ()
   colorsToAnsiNote(borderColor .. "--------------------------------------------------")
 end
 
+
 function startSeek(name, line, args)
+  if not seekrep_ready then
+    Note("Seekrep is on cooldown (2 seconds) or waiting for database operations to finish.")
+    return
+  end
+  seekrep_ready = false
   target = args.name
   dir = args.dir or "nil"
   qty = tonumber(args.qty) or -1
@@ -186,13 +195,9 @@ function startSeek(name, line, args)
   local omitResponse=true
   local noFollowPrompt=false
   local sendViaExecute=true
+  local timeoutDuration=2
 
-  -- uncomment next 2 lines once wrapped_capture update from Crowley goes in. If it goes in.
---  local timeoutDuration=5
---  Capture.tagged_output(command,startTag,endTag,tagsAreRegex,noCommandEcho,omitResponse,noFollowPrompt,processCapture,sendViaExecute,seekFail,timeoutDuration)
-
-  Capture.tagged_output(command,startTag,endTag,tagsAreRegex,noCommandEcho,omitResponse,noFollowPrompt,processCapture,sendViaExecute,seekFail)
-
+  Capture.tagged_output(command,startTag,endTag,tagsAreRegex,noCommandEcho,omitResponse,noFollowPrompt,processCapture,sendViaExecute,seekFail,timeoutDuration)
 end
 
 function processCapture(lines)
@@ -627,34 +632,48 @@ neutral = "@w"
 good = "@y"
 
 aligns = {}
-aligns["a Harbinger of Doom"] = evil
 aligns["a Lord of Ruin"] = evil
 aligns["an Avatar of Darkness"] = evil
+aligns["a Harbinger of Doom"] = evil
 aligns["an Emissary of Evil"] = evil
-aligns["diabolical"] = evil
 aligns["nefarious"] = evil
 aligns["wicked"] = evil
+aligns["diabolical"] = evil
+aligns["heartless"] = evil
+aligns["heinous"] = evil
+aligns["foul"] = evil
+aligns["cruel"] = evil
+aligns["corrupt"] = evil
+aligns["mean"] = evil
+aligns["unpleasant"] = evil
 
 aligns["grey"] = neutral
-aligns["kind"] = neutral
 aligns["neutral"] = neutral
 
-aligns["a Harbinger of Hope"] = good
-aligns["an Avatar of Light"] = good
-aligns["a Lord of Angels"] = good
-aligns["an Emissary of Good"] = good
+aligns["kind"] = good
+aligns["pure"] = good
+aligns["good"] = good
+aligns["righteous"] = good
+aligns["virtuous"] = good
+aligns["reverent"] = good
+aligns["beneficent"] = good
 aligns["angelic"] = good
 aligns["saintly"] = good
 aligns["seraphic"] = good
+aligns["an Emissary of Good"] = good
+aligns["a Harbinger of Hope"] = good
+aligns["an Avatar of Light"] = good
+aligns["a Lord of Angels"] = good
 
 function align_colour(align)
+  DebugNote("Getting align_colour:")
   return aligns[align]
-end
+end -- align_colour --
 
 
 function exists(x)
   return x and x ~= ""
-end
+end -- exists --
 
 
 function fix_sql(sql)
@@ -662,62 +681,178 @@ function fix_sql(sql)
     return Replace(sql, "'", "''", true)
   end
   return nil
-end
+end -- fix_sql --
 
 
-function read(area, name, is_keyword)
+function read(area, name, exact_name)
   local area = fix_sql(area)
   local name = fix_sql(name)
   area = area or get_area()
 
-  if exists(name) then
-    if is_keyword then -- Partial name (seekdb alias or SnD qw)
-      return read_by_keyword(area, name) 
-    else -- Exact name (SnD target)
-      return read_by_area_name(area, name) 
-    end
-  else
+  if exact_name then
+    return read_by_area_name(area, name)
+  elseif name == "all" and area == "all" then
+    return read_all()
+  elseif name == "all" or not exists(name) then
     return read_by_area(area)
+  elseif exists(name) and area == "all" then
+    return read_by_keyword(name)
+  elseif exists(name) then
+    return read_by_area_keyword(area, name)
   end
-end
+  return read_by_area()
+end -- read --
+
+
+function read_by_id(id)
+  local query = "SELECT * FROM mob WHERE id = '" .. id .. "'"
+  return assert(db:prepare(query))
+end -- read_by_id --
 
 
 function read_by_area(area)
   return assert(db:prepare("SELECT * FROM mob WHERE area = '" .. area  .. "'"))
-end
+end -- read_by_area --
 
 
-function read_by_keyword(area, name)
+function keyword_query(name)
   local keywords = utils.split(name, " ")
-  local query = "SELECT * FROM mob WHERE area = '" .. area .. "'"
+  local query = ""
+
   for i, word in ipairs(keywords) do
-    query = query .. " AND name LIKE '%" .. word .. "%'"
+    if i == 1 then
+      query = query .. " name LIKE '%" .. word .. "%'"
+    else
+      query = query .. " AND name LIKE '%" .. word .. "%'"
+    end
   end
+
+  return query
+end -- keyword_query --
+
+function read_by_keyword(name)
+  local kw_query = keyword_query(name)
+  local query = "SELECT * FROM mob WHERE" .. kw_query
   return assert(db:prepare(query))
-end
+end -- read_by_keyword --
+
+
+function read_by_area_keyword(area, name)
+  local kw_query = keyword_query(name)
+  local query = "SELECT * FROM mob WHERE" .. kw_query .. " AND area = '" .. area .. "'"
+  return assert(db:prepare(query))
+end -- read_by_area_keyword --
 
 
 function read_by_area_name(area, name)
   local query = "SELECT * FROM mob WHERE area = '%s' AND name = '%s'"
   query = string.format(query, area, name)
   return assert(db:prepare(query))
-end
+end -- read_by_area_name --
 
--- not used (yet)
+
 function read_all()
   local query = "SELECT * FROM mob"
   return assert(db:prepare(query))
-end
+end -- read_all --
 
 
 function read_resists(resists_id)
   return assert(db:prepare("SELECT * FROM resists WHERE id = '" .. resists_id .. "'"))
-end
+end -- read_resists --
 
 
 function read_immunities(immunities_id)
   return assert(db:prepare("SELECT * FROM immunities WHERE id = '" .. immunities_id .. "'"))
-end
+end -- read_immunities --
+
+
+function delete_entry(row)
+  if exists(row) then
+    DebugNote("Deleting entry:")
+    delete_mob(row.id)
+    delete_resists(row.resistsID)
+    delete_immunities(row.immunitiesID)
+  else
+    DebugNote("Failure to delete entry, no row")
+  end
+end -- delete_entry --
+
+
+function delete_mob(mob_id)
+  if exists(mob_id) then
+    DebugNote("Deleting mob: <" .. mob_id .. ">")
+    local query = "DELETE FROM mob WHERE id = '" .. mob_id .. "'"
+    return assert(db:exec(query))
+  else
+    DebugNote("Failure to delete_mob, no mob_id")
+  end
+end -- delete_mob --
+
+
+function delete_resists(resists_id)
+  if exists(resists_id) then
+    DebugNote("Deleting resists: <" .. resists_id .. ">")
+    local query = "DELETE FROM resists WHERE id = '" .. resists_id .. "'"
+    return assert(db:exec(query))
+  else
+    DebugNote("Failure to delete_resists, no resists_id")
+  end
+end -- delete_resists --
+
+
+function delete_immunities(immunities_id)
+  if exists(immunities_id) then
+    DebugNote("Deleting immunities: <" .. immunities_id .. ">") 
+    local query = "DELETE FROM immunities WHERE id = '" .. immunities_id .. "'"
+    return assert(db:exec(query))
+  else
+    DebugNote("Failure to delete_immunities, no immunities_id")
+  end
+end -- delete_immunities --
+
+
+--[[ alias: seekdb delete <id> ]]--
+function delete_check(x, y, args)
+  if debug_mode == "on" then
+    local id = args.id
+    DebugNote("Delete check: <" .. id .. ">")
+    local results = read_by_id(id)
+    local found = false
+
+    for row in results:nrows() do
+      found = true
+      DebugNote("Are you sure you want to delete <" .. row.id .. "> " .. row.name .. "?")
+      DebugNote("Confirm delete with 'seekdb delete " .. row.id .. " confirm'")
+    end
+
+    if not found then
+      DebugNote("<" .. id .. "> not found in DB.")
+    end
+  else
+    colorsToAnsiNote(textColor .. "Enable debug mode using 'seekdb debug' to delete entries.")
+  end
+end -- delete_check --
+
+
+--[[ alias: seekdb delete <id> confirm ]]--
+function delete_confirm(x, y, args)
+  if debug_mode == "on" then
+    local id = args.id
+    DebugNote("Delete confirm: <" .. id .. ">")
+    local results = read_by_id(id)
+    local found = false
+
+    for row in results:nrows() do
+      found = true
+      delete_entry(row)
+    end
+
+    if not found then
+      DebugNote("<" .. id .. "> not found in DB.")
+    end
+  end
+end -- delete_confirm --
 
 
 function get_area()
@@ -742,6 +877,7 @@ end
 --[[ Create resists entry ]]--
 function create_resists()
   DebugNote("Creating resists entry:")
+
   local resists_query = "INSERT INTO resists VALUES (NULL"
   for _, resist in ipairs(targetArray.resists) do
     resists_query = resists_query .. "," .. tostring(resist.resval)
@@ -756,6 +892,7 @@ end -- create_resists --
 --[[ Create immunities entry ]]--
 function create_immunities()
   DebugNote("Creating immunities entry:")
+
   local immunities_query = "INSERT INTO immunities VALUES (NULL"
   for _, immunity in ipairs(targetArray.immunities) do
     immunities_query = immunities_query .. "," .. tostring(immunity.immuVal)
@@ -778,7 +915,6 @@ function create_mob(resists_id, immunities_id)
     targetArray.align,
     resists_id,
     immunities_id)
-  
   DebugNote(mob_query)
   assert(db:exec(mob_query))
 end -- create_mob --
@@ -790,15 +926,18 @@ function compare_resists(resists_id)
   local THRESHOLD = 5
   local resists = read_resists(resists_id)
   resists:step()
+
   for i, resist in ipairs(targetArray.resists) do
     local db_val = resists:get_value(i)
     DebugNote("targetArray: " .. resist.resval .. " || db: " .. db_val)
+
     -- +/- threshold to account for slight differences (from buffs/level?)
     if resist.resval > db_val + THRESHOLD or resist.resval < db_val - THRESHOLD then
       DebugNote("Resistances not equal")
       return false
     end
   end
+
   DebugNote("Resistances equal")
   return true
 end -- check_resists --
@@ -809,14 +948,17 @@ function compare_immunities(immunities_id)
   DebugNote("Comparing seek and DB immunities:")
   local immunities = read_immunities(immunities_id)
   immunities:step()
+
   for i, immunity in ipairs(targetArray.immunities) do
     local db_val = immunities:get_value(i)
     DebugNote("targetArray: " .. fix_bool(immunity.immuVal) .. " || db: " .. db_val)
+
     if fix_bool(immunity.immuVal) ~= db_val then
       DebugNote("Immunities not equal")
       return false
     end
   end
+
   DebugNote("Immunities equal")
   return true
 end -- check_immunities --
@@ -826,13 +968,10 @@ end -- check_immunities --
 function compare_seek_db(name, area, level, align, resists_id, immunities_id)
   DebugNote("Comparing seek and DB attributes:")
   DebugNote("db: " .. name .. " || seek: " .. targetArray.shortn)
-  -- DebugNote(name == targetArray.shortn)
   DebugNote("db: " .. area .. " || seek: " .. get_area())
-  -- DebugNote(area == get_area())
   DebugNote("db: " .. align .. " || seek: " .. targetArray.align)
-  -- DebugNote(align == targetArray.align)
   DebugNote("db: " .. level .. " || seek: " .. targetArray.baselev)
-  -- DebugNote(tonumber(level) == tonumber(targetArray.baselev))
+
   return name == targetArray.shortn and
       area == get_area() and
       align == targetArray.align and
@@ -847,7 +986,8 @@ function new_seek()
   DebugNote("New seek:")
   trim_align() -- trim targetArray.align
   local existing = false -- Check for duplicates in the db
-  local result = read(nil, targetArray.shortn)
+  local result = read(nil, targetArray.shortn, true)
+
   for row in result:nrows() do
     if compare_seek_db(row.name, row.area, row.level, row.align, row.resistsID, row.immunitiesID) then
       DebugNote("Found in database")
@@ -856,13 +996,17 @@ function new_seek()
     end
   end
 
-  if not existing then
-    DebugNote("Not found in database")
+  if existing then
+    Note("Seekrep complete: duplicate DB entry found.")
+  elseif not existing then
+    Note("Seekrep complete: creating DB entry.")
     local resists_id = create_resists()
     local immunities_id = create_immunities()
     create_mob(resists_id, immunities_id)
     window_new_seek() -- Retry window target search
   end
+
+  seekrep_ready = true
 end -- new_seek --
 
 
@@ -880,11 +1024,16 @@ function read_seekdb(x, y, args)
   DebugNote("Searching DB for seekdb:")
   seekdb_results = {}
   local found = false
-  local results = read(args.area, args.name, true)
+  local results = read(args.area, args.name)
+
   for row in results:nrows() do
     found = true
-    Note(format_output(row)) -- Output to main window
-    table.insert(seekdb_results, row_to_window_mob(row)) -- Load mobs for window
+    if pcall(function() Note(format_output(row)) end) then -- Output to main window 
+      table.insert(seekdb_results, row_to_window_mob(row)) -- Load mobs for window
+    else
+      DebugNote("Errors while running format_output, deleting entry.")
+      delete_entry(row)
+    end
   end
 
   if found then
@@ -902,7 +1051,14 @@ end -- read_target --
 ]]--
 function format_output(mob)
   DebugNote("Formatting output for seekdb results:")
-  local output = align_colour(mob.align) .. "(" .. neutral .. mob.name .. align_colour(mob.align) .. ") "
+  local output = ""
+  if debug_mode == "on" then
+    output = "<" .. mob.id .. "> "
+  end
+
+  local colour = align_colour(mob.align)
+
+  output = output .. colour .. "(" .. neutral .. mob.name .. colour .. ") "
   local weak = "" 
   local strong = ""
   local immune = ""
@@ -1121,7 +1277,7 @@ function window_broadcast(msg, id, name, text)
   if id == gmcp_id and gmcp("char.status.pos") == "Fighting" then
     name = gmcp("char.status.enemy")
     area = get_area()
-    enemy = window_search_db(area, name)
+    enemy = window_search_db(area, name, true)
     enemy.name = "Enemy: " .. name
     changed = true
   else
@@ -1152,7 +1308,7 @@ function window_target()
   mob = json.decode(target_as_json)
   name = mob.name or mob.keyword
   area = mob.area or get_area()
-  snd_target = window_search_db(area, name, exists(mob.keyword))
+  snd_target = window_search_db(area, name, not exists(mob.keyword))
   if debug_mode == "on" then
     tprint(snd_target)
   end
@@ -1178,8 +1334,8 @@ end
 
 
 --[[ Search DB for window mobs ]]--
-function window_search_db(area, name, is_keyword)
-  local results = read(area, name, is_keyword)
+function window_search_db(area, name, snd)
+  local results = read(area, name, snd)
   local window_mob = {name = name, weak = "", strong = "", immune = "", found = false}
 
   for row in results:nrows() do

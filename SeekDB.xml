@@ -14,7 +14,7 @@
    purpose="Report and store Seek data."
    date_written="2025-06-27 18:59:39"
    requires="5.07"
-   version="1.13"
+   version="1.14"
    save_state="y"
    >
 <description trim="y">
@@ -23,11 +23,11 @@ SeekDB (+ SeekRep)
 -------
 Seek clanskill ouput reporter and database.
 
->> seekrep config help
-   for initial setup configuration
-
->> seekrep help
+>> seekdb help
    for general use
+
+>> seekrep config help
+   for seekrep initial setup configuration
 ]]>
 </description>
 
@@ -38,13 +38,16 @@ Seek clanskill ouput reporter and database.
 <aliases>
   <alias match="^seekrep\s(?<name>((\d*\.)?\w+))\s?(?<dir>(top|bot|all|immcheck|verbose))?\s?(?<qty>\d+)?" script="startSeek" regexp="y" enabled="y" group="seekrep" send_to="12" sequence="100" ></alias>
   <alias match="^seekdb\s?(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>
-  <alias script="OnHelp" match="seekrep help" enabled="y"></alias>
+  <alias script="OnHelp" match="seekdb help" enabled="y"></alias>
   <alias match="seekdb update check" enabled="y" script="update_check_alias" sequence="99"/>
   <alias match="seekdb update install" enabled="y" script="update_install_alias" sequence="99"/>
   <alias match="^seekrep config(\s((?<command>(channel|rvcolor|rncolor|sepcolor|output)) (?<value>.+)))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config(\s((?<command>(output)) (?<value>(echo|channel|both))))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config (?<command>reset|help)$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekdb debug$" enabled="y" regexp="y" script="debug_toggle" sequence="99"></alias>
+  <alias match="^seekdb delete\s(?<id>(\d+))$" enabled="y" regexp="y" script="delete_check" sequence="99"></alias>
+ <alias match="^seekdb delete\s(?<id>(\d+))\sconfirm" enabled="y" regexp="y" script="delete_confirm" sequence="99"></alias>
+  
 </aliases>
 
 <!--  Script  -->
