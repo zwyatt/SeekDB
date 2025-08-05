@@ -2,11 +2,12 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.14
 - seekrep now has a 2 second cooldown to prevent data corruption
 - seekdb now accepts 'all' for target and area
 - debug mode and delete functionality added
 
-### Previous
+### 1.13
 - Added update functionality
 - No longer triggers on whois or identify after a failed seekrep seek
 
@@ -39,11 +40,14 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
-- Using seekrep too quickly can cause duplicate malformed database entries
-- Seekrep and seekdb only take one keyword as a name argument.
+- seekrep and seekdb only take one keyword as a name argument.
+- Window enemy/target does not handle multiple database results gracefully.
+- Search & Destroy quickwhere doesn't show the name of the actual mob it found.
 - It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
 
 ## Future Updates
+- Customizable resist thresholds
+- Choose which resists to show in which category
 - Trigger on seek rather than using seekrep
 - Scan and con overwriting
 - Scan for mobs missing from database
@@ -52,6 +56,6 @@ Data is stored in SeekDB.db.
 
 ## Credits
 - Anssett: SeekRep 
-- Crowley: Plugin Updating, SnD
-- Fiendish: Aardwolf MUSHclient, GMCP Handler,  Stat Monitor
+- Crowley: Plugin updating stuff, SnD
+- Fiendish: Aardwolf MUSHclient, GMCP Handler,  Miniwindow stuff from Stat Monitor
 - Nick Gammon: MUSHclient, all the documentation
