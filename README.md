@@ -54,6 +54,21 @@ Data is stored in SeekDB.db.
 - Database backups
 - Miscellaneous other stuff probably
 
+## Debug Mode
+### Toggle debug mode, will show mob IDs in seekdb results and additional DebugNotes (need cleaning up)
+```
+seekdb debug
+```
+### Delete a mob
+```
+seekdb delete <mobid>
+```
+
+### Confirm mob deletion
+```
+seekdb delete <mobid> confirm
+```
+
 ## Credits
 - Anssett: SeekRep 
 - Crowley: Plugin updating stuff, SnD
