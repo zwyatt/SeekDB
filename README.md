@@ -4,7 +4,7 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 ## Updates:
 ### 1.14
 - seekrep now has a 2 second cooldown to prevent data corruption
-- seekdb now accepts 'all' for target and area
+- seekdb now accepts 'all' parameter for target and area
 - debug mode and delete functionality added
 
 ### 1.13
