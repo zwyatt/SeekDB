@@ -2,14 +2,18 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.15
+- Added:
+  - Right-click menu to the SeekDB window to customize font, colours, threshold, and damage type whitelists
+  - "Short Resists" mode, Bring to Front/Send to Back and Reset to Defaults functionality
+  - NOTE: Window does not update immediately after toggling Short Resists mode or making whitelist changes
+- Fixes:
+  - Seekrep can now take puncuated mob names (apostrophes, dashes, etc.) - still no guarantee that the mob keywords actually include those, however
+  - Window has a set minimum size so it can no longer be resized to disappear
 ### 1.14
 - seekrep now has a 2 second cooldown to prevent data corruption
 - seekdb now accepts 'all' parameter for target and area
 - [debug mode and delete functionality added](https://github.com/zwyatt/SeekDB/tree/main?tab=readme-ov-file#debug-mode)
-
-### 1.13
-- Added update functionality
-- No longer triggers on whois or identify after a failed seekrep seek
 
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
@@ -40,14 +44,16 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
+- Window does not update immediately after toggling Short Resists mode or whitelist changes.
+- The order of damage types in whitelist menu can change, but they still work correctly.
 - seekrep and seekdb only take one keyword as a name argument.
 - Window enemy/target does not handle multiple database results gracefully.
 - Search & Destroy quickwhere doesn't show the name of the actual mob it found.
 - It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
 
 ## Future Updates
-- Customizable resist thresholds
-- Choose which resists to show in which category
+- Option to show and group resist values
+- Fixes for multiple database results, mobs with many immunities, window updating after short resist and whitelist changes
 - Trigger on seek rather than using seekrep
 - Scan and con overwriting
 - Scan for mobs missing from database
@@ -72,5 +78,5 @@ seekdb delete <mobid> confirm
 ## Credits
 - Anssett: SeekRep 
 - Crowley: Plugin updating stuff, SnD
-- Fiendish: Aardwolf MUSHclient, GMCP Handler,  Miniwindow stuff from Stat Monitor
+- Fiendish: Aardwolf MUSHclient, GMCP Handler,  miniwindow stuff from Stat Monitor
 - Nick Gammon: MUSHclient, all the documentation
