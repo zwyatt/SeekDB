@@ -1,4 +1,4 @@
---   version="1.15"
+--   version="1.151"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -132,7 +132,7 @@ function OnHelp ()
   local textColor = "@x178"
   local cmdColor = "@W"
   
-  colorsToAnsiNote(borderColor .. "------------------" .. textColor .. " SeekRep Help " .. borderColor .. "------------------")
+  colorsToAnsiNote(borderColor .. "------------------" .. textColor .. " SeekDB Help " .. borderColor .. "------------------")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "Initial Setup" .. borderColor .. "==--")
   colorsToAnsiNote(textColor .. "After the first installation, run " .. cmdColor .. "seekrep config help")
@@ -1158,9 +1158,9 @@ short_resists = {
   ["All Physical"] = "*Phys",
   ["All Magic"] = "*Mag",
   ["Air"] = "Air",
-  ["Acid"] = "Acid",
+  ["Acid"] = "Acd",
   ["Bash"] = "Bsh",
-  ["Cold"] = "Cold",
+  ["Cold"] = "Cld",
   ["Disease"] = "Disz",
   ["Earth"] = "Erth",
   ["Electric"] = "Elec",
@@ -1232,9 +1232,9 @@ end -- parse_resists --
   require "mw_theme_base"
   require "movewindow"
 
-  DEFAULT_WIDTH = 200
+  DEFAULT_WIDTH = 300
   DEFAULT_HEIGHT = 200
-  DEFAULT_X = 100
+  DEFAULT_X = 50
   DEFAULT_Y = 700
 
   MIN_SIZE = 50
@@ -1319,9 +1319,17 @@ end
 
 --[[ OnPluginInstall ]]--
 function window_install()
-  width = tonumber(GetVariable("width")) or DEFAULT_WIDTH
-  height = tonumber(GetVariable("height")) or DEFAULT_HEIGHT
+  DebugNote("Setting window width and height from variable")
+  width = tonumber(GetVariable("width"))
+  if not exists(width) or width == 0 then
+    width = DEFAULT_WIDTH
+  end
+  height = tonumber(GetVariable("height"))
+  if not exists(height) or height == 0 then
+    height = DEFAULT_HEIGHT
+  end
 
+  DebugNote("Installing movewindow")
   windowinfo =
     movewindow.install(
       win,
@@ -1330,9 +1338,10 @@ function window_install()
       false,
       nil,
       {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},
-      {x=default_x, y=default_y}
+      {x=DEFAULT_X, y=DEFAULT_Y}
     )
 
+  DebugNote("Creating window")
   WindowCreate(
     win,
     windowinfo.window_left,
@@ -1343,6 +1352,12 @@ function window_install()
     windowinfo.window_flags,
     Theme.PRIMARY_BODY
   )
+
+  DebugNote("win: " .. win)
+  DebugNote("window_left: " .. windowinfo.window_left)
+  DebugNote("window_top: " .. windowinfo.window_top)
+  DebugNote("width: " .. width)
+  DebugNote("height: " .. height)
 
   -- Fonts
   local fonts = utils.getfontfamilies()
