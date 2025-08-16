@@ -1,4 +1,4 @@
---   version="1.14"
+--   version="1.15"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -586,7 +586,6 @@ NOTE_COLORS = {
     DEBUG_HIGHLIGHT = "#FFD700"
 }
 
-
 function debug_toggle()
   if debug_mode == "on" then
     DebugNote("Debug mode is now off.")
@@ -620,7 +619,16 @@ function print_alternating_note(messages, regular_color, highlight_color, backgr
 end
 
 
-function merge(xs, ys)
+function table.shallow_copy(xs)
+  local ys = {}
+  for k, v in pairs(xs) do
+    ys[k] = v
+  end
+  return ys
+end
+
+
+function table.merge(xs, ys)
   for i, y in ipairs(ys) do
     table.insert(xs, y)
   end
@@ -631,39 +639,40 @@ evil = "@r"
 neutral = "@w"
 good = "@y"
 
-aligns = {}
-aligns["a Lord of Ruin"] = evil
-aligns["an Avatar of Darkness"] = evil
-aligns["a Harbinger of Doom"] = evil
-aligns["an Emissary of Evil"] = evil
-aligns["nefarious"] = evil
-aligns["wicked"] = evil
-aligns["diabolical"] = evil
-aligns["heartless"] = evil
-aligns["heinous"] = evil
-aligns["foul"] = evil
-aligns["cruel"] = evil
-aligns["corrupt"] = evil
-aligns["mean"] = evil
-aligns["unpleasant"] = evil
+aligns = {
+  ["a Lord of Ruin"] = evil,
+  ["an Avatar of Darkness"] = evil,
+  ["a Harbinger of Doom"] = evil,
+  ["an Emissary of Evil"] = evil,
+  ["nefarious"] = evil,
+  ["wicked"] = evil,
+  ["diabolical"] = evil,
+  ["heartless"] = evil,
+  ["heinous"] = evil,
+  ["foul"] = evil,
+  ["cruel"] = evil,
+  ["corrupt"] = evil,
+  ["mean"] = evil,
+  ["unpleasant"] = evil,
 
-aligns["grey"] = neutral
-aligns["neutral"] = neutral
+  ["grey"] = neutral,
+  ["neutral"] = neutral,
 
-aligns["kind"] = good
-aligns["pure"] = good
-aligns["good"] = good
-aligns["righteous"] = good
-aligns["virtuous"] = good
-aligns["reverent"] = good
-aligns["beneficent"] = good
-aligns["angelic"] = good
-aligns["saintly"] = good
-aligns["seraphic"] = good
-aligns["an Emissary of Good"] = good
-aligns["a Harbinger of Hope"] = good
-aligns["an Avatar of Light"] = good
-aligns["a Lord of Angels"] = good
+  ["kind"] = good,
+  ["pure"] = good,
+  ["good"] = good,
+  ["righteous"] = good,
+  ["virtuous"] = good,
+  ["reverent"] = good,
+  ["beneficent"] = good,
+  ["angelic"] = good,
+  ["saintly"] = good,
+  ["seraphic"] = good,
+  ["an Emissary of Good"] = good,
+  ["a Harbinger of Hope"] = good,
+  ["an Avatar of Light"] = good,
+  ["a Lord of Angels"] = good
+}
 
 function align_colour(align)
   DebugNote("Getting align_colour:")
@@ -674,6 +683,10 @@ end -- align_colour --
 function exists(x)
   return x and x ~= ""
 end -- exists --
+
+function is_empty(xs)
+  return next(xs) == nil
+end
 
 
 function fix_sql(sql)
@@ -700,7 +713,7 @@ function read(area, name, exact_name)
   elseif exists(name) then
     return read_by_area_keyword(area, name)
   end
-  return read_by_area()
+  return read_by_area(area)
 end -- read --
 
 
@@ -1064,13 +1077,13 @@ function format_output(mob)
   local immune = ""
   weak, strong, immune = parse_resists(mob.resistsID, mob.immunitiesID)
   if exists(weak) then
-    output = output .. "@w|| @G" .. weak
+    output = output .. "@w| @G" .. weak .. " "
   end
   if exists(strong) then
-    output = output .. "@w|| @M" .. strong
+    output = output .. "@w| @M" .. strong .. " "
   end
   if exists(immune) then
-    output = output .. "@w|| @R" .. immune
+    output = output .. "@w| @R" .. immune
   end
 
   return colorsToAnsiNote(output)
@@ -1078,7 +1091,7 @@ end -- format_output --
 
 
 --[[ Group resists by weak/strong, immunities if all physical/all magical ]]--
-function group_resists(resists_db, immunities_db, weak_threshold, strong_threshold)
+function group_resists(resists_db, immunities_db)
   local weak = {}
   local strong = {}
   local immune = {}
@@ -1098,9 +1111,9 @@ function group_resists(resists_db, immunities_db, weak_threshold, strong_thresho
       else
         table.insert(phys_imms, imm.immuName)
       end
-    elseif db_resist <= weak_threshold then
+    elseif db_resist <= weak_threshold and weak_whitelist[imm.immuName] then
       table.insert(weak, {type = imm.immuName, value = db_resist})
-    elseif db_resist >= strong_threshold then
+    elseif db_resist >= strong_threshold and strong_whitelist[imm.immuName] then
       table.insert(strong, {type = imm.immuName, value = db_resist})
     end
   end
@@ -1110,7 +1123,9 @@ function group_resists(resists_db, immunities_db, weak_threshold, strong_thresho
     table.insert(immune, "All Physical")
   else
     for i, imm in ipairs(phys_imms) do
-      table.insert(immune, imm)
+      if immune_whitelist[imm] then
+        table.insert(immune, imm)
+      end
     end
   end
 
@@ -1118,7 +1133,9 @@ function group_resists(resists_db, immunities_db, weak_threshold, strong_thresho
     table.insert(immune, "All Magic")
   else
     for i, imm in ipairs(mag_imms) do
-      table.insert(immune, imm)
+      if immune_whitelist[imm] then
+        table.insert(immune, imm)
+      end
     end
   end
 
@@ -1135,32 +1152,63 @@ function sort_resists(weak, strong)
     return a.value > b.value
   end)
   return weak, strong
-end
+end -- sort_resists --
 
+short_resists = {
+  ["All Physical"] = "*Phys",
+  ["All Magic"] = "*Mag",
+  ["Air"] = "Air",
+  ["Acid"] = "Acid",
+  ["Bash"] = "Bsh",
+  ["Cold"] = "Cold",
+  ["Disease"] = "Disz",
+  ["Earth"] = "Erth",
+  ["Electric"] = "Elec",
+  ["Energy"] = "Nrg",
+  ["Fire"] = "Fir",
+  ["Holy"] = "Hly",
+  ["Light"] = "Lyt",
+  ["Magic"] = "Mag",
+  ["Mental"] = "Mntl",
+  ["Negative"] = "Neg",
+  ["Pierce"] = "Prce",
+  ["Poison"] = "Psn",
+  ["Shadow"] = "Shdw",
+  ["Slash"] = "Slsh",
+  ["Sonic"] = "Snic",
+  ["Water"] = "Wtr"
+}
+
+separator = ", "
 
 --[[ Concatenate resists/immunities to strings ]]--
 function conc_resists(weak, strong, immune)
   function conc(resists)
-    local conced = ""
+    local conced = {}
 
     for i, res in ipairs(resists) do
-      conced = conced .. res.type .. " "
+      if short_resists_enabled then res.type = short_resists[res.type] end
+      table.insert(conced, res.type)
     end
 
-    return conced
+    return table.concat(conced, separator)
   end
 
   weak = conc(weak)
   strong = conc(strong)
   if immune then
-    immune = table.concat(immune, " ")
+    if short_resists_enabled then
+      short_imms = {}
+      for i, imm in ipairs(immune) do
+        table.insert(short_imms, short_resists[imm])
+      end
+      immune = short_imms
+    end
+    immune = table.concat(immune, separator)
   end
 
   return weak, strong, immune
 end -- conc_resists --
-
-WEAK_THRESHOLD = -10
-STRONG_THRESHOLD = 10
 
 --[[
   - Group resists by weak and strong, filter by threshold
@@ -1170,7 +1218,7 @@ STRONG_THRESHOLD = 10
 function parse_resists(resists_id, immunities_id)
   resists_db = read_resists(resists_id)
   immunities_db = read_immunities(immunities_id)
-  weak, strong, immune = group_resists(resists_db, immunities_db, WEAK_THRESHOLD, STRONG_THRESHOLD)
+  weak, strong, immune = group_resists(resists_db, immunities_db)
   weak, strong = sort_resists(weak, strong)
   return conc_resists(weak, strong, immune)
 end -- parse_resists --
@@ -1180,29 +1228,100 @@ end -- parse_resists --
 ------------------------- Miniwindow Code ------------------------
 -- Credit: Fiendish's Stat Monitor plugin, more or less 
 
-require "mw_theme_base"
-require "movewindow"
+-- [[ Window init ]] --
+  require "mw_theme_base"
+  require "movewindow"
 
-DEFAULT_WIDTH = 200
-DEFAULT_HEIGHT = 200
-DEFAULT_X = 100
-DEFAULT_Y = 700
+  DEFAULT_WIDTH = 200
+  DEFAULT_HEIGHT = 200
+  DEFAULT_X = 100
+  DEFAULT_Y = 700
 
--- TODO: min_size not used
-MIN_SIZE = 100
-LEFT_MARGIN = 10
-TOP_MARGIN = 5
+  MIN_SIZE = 50
+  LEFT_MARGIN = 10
+  TOP_MARGIN = 5
 
-width = 0
-height = 0
+  width = 0
+  height = 0
 
-font_id = "font_" .. GetPluginID()
+  font_id = "font_" .. GetPluginID()
+  font_name = ""
+  font_size = ""
 
-win = "win_" .. GetPluginID()
-windowinfo = ""
+  win = "win_" .. GetPluginID()
+  windowinfo = ""
+
+  DEFAULT_BASE_COLOUR = ColourNameToRGB("white")
+  DEFAULT_WEAK_COLOUR = ColourNameToRGB("green")
+  DEFAULT_STRONG_COLOUR = ColourNameToRGB("orange")
+  DEFAULT_IMMUNE_COLOUR = ColourNameToRGB("red")
+
+  DEFAULT_WEAK_THRESHOLD = -10
+  DEFAULT_STRONG_THRESHOLD = 10
+
+  -- [[ Generate whitelist table from GetVariable string ]] --
+  function parse_whitelist(wl)
+    if exists(wl) then
+      wl = utils.split(wl, " ")
+      local new_wl = table.shallow_copy(BASE_WHITELIST)
+      for i, res in ipairs(wl) do
+        new_wl[res] = true
+      end
+      return new_wl
+    else
+      return table.shallow_copy(DEFAULT_WHITELIST)
+    end
+  end -- parse_whitelist --
+
+
+  function generate_whitelist(bool)
+    local wl = {}
+    for i, v in ipairs(targetArray.resists) do
+      wl[v.resName] = bool
+    end
+    return wl
+  end
+
+  initTarget()
+  DEFAULT_WHITELIST = generate_whitelist(true)
+  BASE_WHITELIST = generate_whitelist(false)
+
+  base_colour = GetVariable("base_colour") or DEFAULT_BASE_COLOUR
+  short_resists_enabled = GetVariable("short_resists_enabled") == "true"
+
+  weak_enabled = GetVariable("weak_enabled") or true
+  weak_enabled = weak_enabled == "true"
+  weak_threshold = tonumber(GetVariable("weak_threshold")) or DEFAULT_WEAK_THRESHOLD
+  weak_whitelist = parse_whitelist(GetVariable("weak_whitelist"))
+  weak_colour = GetVariable("weak_colour") or DEFAULT_WEAK_COLOUR
+
+  strong_enabled = GetVariable("strong_enabled") or true
+  strong_enabled = strong_enabled == "true"
+  strong_threshold = tonumber(GetVariable("strong_threshold")) or DEFAULT_STRONG_THRESHOLD
+  strong_whitelist = parse_whitelist(GetVariable("strong_whitelist"))
+  strong_colour = GetVariable("strong_colour") or DEFAULT_STRONG_COLOUR
+
+  immune_enabled = GetVariable("immune_enabled") or true
+  immune_enabled = immune_enabled == "true"
+  immune_whitelist = parse_whitelist(GetVariable("immune_whitelist"))
+  immune_colour = GetVariable("immune_colour") or DEFAULT_IMMUNE_COLOUR
+-- [[ End window init ]] --
+
+
+function window_send_front()
+  CallPlugin("462b665ecb569efbf261422f","boostMe", win)
+end
+
+function window_send_back()
+  CallPlugin("462b665ecb569efbf261422f","dropMe", win)
+end
+
 
 --[[ OnPluginInstall ]]--
 function window_install()
+  width = tonumber(GetVariable("width")) or DEFAULT_WIDTH
+  height = tonumber(GetVariable("height")) or DEFAULT_HEIGHT
+
   windowinfo =
     movewindow.install(
       win,
@@ -1213,9 +1332,6 @@ function window_install()
       {mouseup=MouseUp, mousedown=LeftClickOnly, dragmove=LeftClickOnly, dragrelease=LeftClickOnly},
       {x=default_x, y=default_y}
     )
-
-  width = tonumber(GetVariable("width")) or DEFAULT_WIDTH
-  height = tonumber(GetVariable("height")) or DEFAULT_HEIGHT
 
   WindowCreate(
     win,
@@ -1241,7 +1357,7 @@ function window_install()
     default_font_name = "Dina"
   elseif fonts["Courier New"] then
     default_font_size = 9
-    default_font_name "Courier New"
+    default_font_name = "Courier New"
   else
     default_font_size = 9
     default_font_name = "Lucida Console"
@@ -1255,6 +1371,7 @@ function window_install()
   line_height = WindowFontInfo(win, font_id, 1) - WindowFontInfo(win, font_id, 4) + 2
 
   resize_window()
+  window_send_front()
   WindowShow(win, true)
 end -- window_install --
 
@@ -1262,7 +1379,6 @@ json = require 'json'
 gmcp_id = "3e7dedbe37e44942dd46d264"
 snd_id = "30000000537461726c696e67"
 
-win_text = {}
 enemy = ""
 snd_target = ""
 last_msg = 2
@@ -1313,7 +1429,7 @@ function window_target()
     tprint(snd_target)
   end
   snd_target.name = "Target: " .. name
-end
+end -- window_target --
 
 
 --[[ Parse database row into window mob ]]--
@@ -1330,7 +1446,7 @@ function row_to_window_mob(row)
     found = true
   }
   return window_mob
-end
+end -- row_to_window_mob --
 
 
 --[[ Search DB for window mobs ]]--
@@ -1356,6 +1472,7 @@ end -- window_new_seek --
 
 --[[ Draw the border and text ]]--
 function window_draw()
+  local win_text = {}
   -- Border
   bodyleft, bodytop, bodyright, bodybottom = Theme.DrawBorder(win)
   WindowRectOp(win, 2, bodyleft, bodytop, bodyright+1, bodybottom+1, Theme.PRIMARY_BODY) -- blank
@@ -1376,33 +1493,33 @@ function window_draw()
     table.insert(win_text, {name = "Target: <no target>", found = true})
   end
 
-  win_text = merge(win_text, seekdb_results)
+  win_text = table.merge(win_text, seekdb_results)
 
   function draw_text(text, colour)
     top = TOP_MARGIN + (line - 1) * line_height
-    WindowText(win, font_id, text, left, top, bodyright, bodybottom, ColourNameToRGB(colour), false)
+    WindowText(win, font_id, text, left, top, bodyright, bodybottom, colour, false)
     line = line + 1
   end
 
   -- Draw the text lines
   for i, mob in ipairs(win_text) do
     if exists(mob.name) then
-      draw_text(mob.name, "white")
+      draw_text(mob.name, base_colour)
     end
  
     if not mob.found then
-      draw_text("<not found in SeekDB>", "white")
+      draw_text("<not found in SeekDB>", base_colour)
     else
-      if exists(mob.weak) then
-        draw_text(mob.weak, "green")
+      if exists(mob.weak) and weak_enabled then
+        draw_text(mob.weak, weak_colour)
       end
 
-      if exists(mob.strong) then
-        draw_text(mob.strong, "orange")
+      if exists(mob.strong) and strong_enabled then
+        draw_text(mob.strong, strong_colour)
       end
 
-      if exists(mob.immune) then
-        draw_text(mob.immune, "red")
+      if exists(mob.immune) and immune_enabled then
+        draw_text(mob.immune, immune_colour)
       end
     end
 
@@ -1415,6 +1532,193 @@ function window_draw()
 
   CallPlugin("abc1a0944ae4af7586ce88dc", "BufferedRepaint") -- Resizes window immediately
 end -- draw --
+
+
+-- [[ Generate a string from a whitelist for storing in SetVariable ]] --
+function whitelist_tostring(wl)
+  local wl_str = ""
+  for res, is_wl in pairs(wl) do
+    if is_wl then wl_str = wl_str .. res .. " " end
+  end
+  return string.sub(wl_str, 1, -2)
+end -- whitelist_tostring --
+
+
+function right_click_menu()
+  -- [[ Generate part of the menustring from a whitelist ]] --
+  function whitelist_tomenu(wl, type)
+    local menu_wl = ""
+    for res, is_wl in pairs(wl) do
+      menu_wl = menu_wl .. (is_wl and "+" or "") .. type .. res .. "|"
+    end
+    return menu_wl
+  end -- whitelist_tomenu --
+
+-- [[ Generate menustring ]] --
+  local menustring = ""
+  menustring = "Font|"
+  menustring = menustring .. "Base Colour|"
+  menustring = menustring .. (short_resists_enabled and "+" or "") .. "Short Resists|-|"
+
+  menustring = menustring .. ">Weak|"
+  menustring = menustring .. (weak_enabled and "+" or "") .. "Weak - Enabled|"
+  menustring = menustring .. ">Weak - Threshold|"
+  menustring = menustring .. (weak_threshold == -20 and "+" or "") .."Weak - -20%|"
+  menustring = menustring .. (weak_threshold == -15 and "+" or "") .."Weak - -15%|"
+  menustring = menustring .. (weak_threshold == -10 and "+" or "") .."Weak - -10%|"
+  menustring = menustring .. (weak_threshold == -5 and "+" or "") .."Weak - -5%|<|"
+  menustring = menustring .. ">Weak - Whitelist|" .. whitelist_tomenu(weak_whitelist, "Weak - ") .. "<|"
+  menustring = menustring .. "Weak - Colour|<|-|"
+
+  menustring = menustring .. ">Strong|"
+  menustring = menustring .. (strong_enabled and "+" or "") .. "Strong - Enabled|"
+  menustring = menustring .. ">Strong - Threshold|"
+  menustring = menustring .. (strong_threshold == 20 and "+" or "") .."Strong - 20%|"
+  menustring = menustring .. (strong_threshold == 15 and "+" or "") .."Strong - 15%|"
+  menustring = menustring .. (strong_threshold == 10 and "+" or "") .."Strong - 10%|"
+  menustring = menustring .. (strong_threshold == 5 and "+" or "") .."Strong - 5%|<|"
+  menustring = menustring .. ">Strong - Whitelist|" .. whitelist_tomenu(strong_whitelist, "Strong - ") .. "<|"
+  menustring = menustring .. "Strong - Colour|<|-|"
+  
+  menustring = menustring .. ">Immune|"
+  menustring = menustring .. (immune_enabled and "+" or "") .. "Immune - Enabled|"
+  menustring = menustring .. ">Immune - Whitelist|" .. whitelist_tomenu(immune_whitelist, "Immune - ") .. "<|"
+  menustring = menustring .. "Immune - Colour|<|-|"
+
+  menustring = menustring .. "Bring to Front|"
+  menustring = menustring .. "Send to Back|-|"
+
+  menustring = menustring .. "Reset Defaults"
+-- [[ End generate menustring ]] --
+  
+  result = WindowMenu(
+    win,
+    WindowInfo(win, 14), -- x
+    WindowInfo(win, 15), -- y
+    menustring
+  )
+
+-- [[ Choose result ]] --
+  local redraw = true
+  -- General options
+  if result == "Font" then
+    local wanted_font = utils.fontpicker(font_name, font_size) -- font dialog
+    if wanted_font then
+      font_name = wanted_font.name
+      font_size = wanted_font.size
+      SetVariable("font_name", font_name)
+      SetVariable("font_size", font_size)
+      SaveState()
+      OnPluginInstall()
+    end
+  elseif result == "Base Colour" then
+    local new_colour = PickColour(base_colour)
+    if new_colour ~= -1 then
+      base_colour = new_colour
+      SetVariable("base_colour", base_colour)
+    end
+  elseif result == "Short Resists" then
+    short_resists_enabled = not short_resists_enabled
+    SetVariable("short_resists_enabled", tostring(short_resists_enabled))
+  -- Weak options
+  elseif result == "Weak - Enabled" then
+    weak_enabled = not weak_enabled
+    SetVariable("weak_enabled", tostring(weak_enabled))
+  elseif result == "Weak - Colour" then
+    local new_colour = PickColour(weak_colour)
+    if new_colour ~= -1 then
+      weak_colour = new_colour
+      SetVariable("weak_colour", weak_colour)
+    end
+  elseif string.find(result, "Weak - ") then
+    local res = string.gsub(result, "Weak %- ", "")
+    res = string.gsub(res, "%%", "")
+    local res_num = tonumber(res)
+    if res_num then
+      weak_threshold = res_num
+      SetVariable("weak_threshold", weak_threshold)
+    else
+      weak_whitelist[res] = not weak_whitelist[res]
+      SetVariable("weak_whitelist", whitelist_tostring(weak_whitelist))
+    end
+  -- Strong options
+  elseif result == "Strong - Enabled" then
+    strong_enabled = not strong_enabled
+    SetVariable("strong_enabled", tostring(strong_enabled))
+  elseif result == "Strong - Colour" then
+    local new_colour = PickColour(strong_colour)
+    if new_colour ~= -1 then
+      strong_colour = new_colour
+      SetVariable("strong_colour", strong_colour)
+    end
+  elseif string.find(result, "Strong - ") then
+    local res = string.gsub(result, "Strong %- ", "")
+    res = string.gsub(res, "%%", "") 
+    local res_num = tonumber(res)
+    if res_num then
+      strong_threshold = res_num
+      SetVariable("strong_threshold", strong_threshold)
+    else
+      strong_whitelist[res] = not strong_whitelist[res]
+      SetVariable("strong_whitelist", whitelist_tostring(strong_whitelist))
+    end
+  -- Immune options
+  elseif result == "Immune - Enabled" then
+    immune_enabled = not immune_enabled
+    SetVariable("immune_enabled", tostring(immune_enabled))
+  elseif result == "Immune - Colour" then
+    local new_colour = PickColour(immune_colour)
+    if new_colour ~= -1 then
+      immune_colour = new_colour
+      SetVariable("immune_colour", immune_colour)
+    end
+  elseif string.find(result, "Immune - ") then
+    local res = string.gsub(result, "Immune %- ", "")
+    immune_whitelist[res] = not immune_whitelist[res]
+    SetVariable("immune_whitelist", whitelist_tostring(immune_whitelist))
+  -- Send window to Front/Back
+  elseif result == "Bring to Front" then
+    window_send_front()
+  elseif result == "Send to Back" then
+    window_send_back()
+  -- Reset defaults
+  elseif result == "Reset Defaults" then
+    font_name = default_font_name
+    font_size = default_font_size
+    width = DEFAULT_WIDTH
+    height = DEFAULT_HEIGHT
+
+    snd_target = ""
+    enemy = ""
+    seekdb_results = {}
+    short_resists_enabled = false
+
+    weak_enabled = true
+    strong_enabled = true
+    immune_enabled = true
+
+    weak_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
+    strong_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
+    immune_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
+
+    weak_threshold = DEFAULT_WEAK_THRESHOLD
+    strong_threshold = DEFAULT_STRONG_THRESHOLD
+
+    base_colour = DEFAULT_BASE_COLOUR
+    weak_colour = DEFAULT_WEAK_COLOUR
+    strong_colour = DEFAULT_STRONG_COLOUR
+    immune_colour = DEFAULT_IMMUNE_COLOUR
+    
+    window_save()
+    window_install()
+  else
+    redraw = false -- Nothing changed, don't redraw
+  end
+-- [[ End choose result ]] --
+
+  if redraw then window_draw() end
+end -- right_click_menu --
+
 
 startx = ""
 starty = ""
@@ -1432,8 +1736,24 @@ function ResizeMoveCallback()
   width = width + posx - startx
   startx = posx
 
+  if width < MIN_SIZE then
+    width = MIN_SIZE
+    startx = windowinfo.window_left + width
+  elseif windowinfo.window_left + width > GetInfo(281) then -- client window width
+    width = GetInfo(281) - windowinfo.window_left
+    startx = GetInfo(281)
+  end
+    
   height = height + posy - starty
   starty = posy
+
+  if height < MIN_SIZE then
+    height = MIN_SIZE
+    starty = windowinfo.window_top + height
+  elseif windowinfo.window_top + height > GetInfo(280) then -- client window height
+    height = GetInfo(280) - windowinfo.window_top
+    starty = GetInfo(280)
+  end
 
   if (utils.timer() - last_refresh > 0.033) then
     resize_window()
@@ -1456,6 +1776,9 @@ end -- MouseDown --
 
 
 function MouseUp(flags, hotspot_id, win)
+  if bit.band(flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
+    right_click_menu()
+  end
   return true
 end -- MouseUp --
 
@@ -1480,6 +1803,29 @@ function window_save()
   movewindow.save_state(win)
   SetVariable("width", width)
   SetVariable("height", height)
+
+  SetVariable("font_name", font_name)
+  SetVariable("font_size", font_size)
+
+  CallPlugin("462b665ecb569efbf261422f","boostMe", win)
+
+  SetVariable("short_resists_enabled", fix_bool(short_resists_enabled))
+
+  SetVariable("weak_enabled", tostring(weak_enabled))
+  SetVariable("strong_enabled", tostring(strong_enabled))
+  SetVariable("immune_enabled", tostring(immune_enabled))
+
+  SetVariable("weak_whitelist", whitelist_tostring(weak_whitelist))
+  SetVariable("strong_whitelist", whitelist_tostring(strong_whitelist))
+  SetVariable("immune_whitelist", whitelist_tostring(immune_whitelist))
+
+  SetVariable("weak_threshold", weak_threshold)
+  SetVariable("strong_threshold", strong_threshold)
+
+  SetVariable("base_colour", base_colour)
+  SetVariable("weak_colour", weak_colour)
+  SetVariable("strong_colour", strong_colour)
+  SetVariable("immune_colour", immune_colour)
 end -- window_save --
 
 
