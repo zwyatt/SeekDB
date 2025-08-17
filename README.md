@@ -30,7 +30,8 @@ seekrep <target>
 ```
 seekdb <target> <area>
 ```
-\
+### Right-click on the miniwindow to customize font, colours, whitelists, etc.
+
 The miniwindow will always display the current enemy and SnD quest/campaign/global quest or quickwhere target.
 
 Mob weaknesses are shown in green, in order from weakest to strongest.
@@ -44,12 +45,12 @@ Mob alignment is shown in output as red, white, or yellow brackets around the mo
 Data is stored in SeekDB.db.
 
 ## Known Issues
-- Window does not update immediately after toggling Short Resists mode or whitelist changes.
-- The order of damage types in whitelist menu can change, but they still work correctly.
-- seekrep and seekdb only take one keyword as a name argument.
-- Window enemy/target does not handle multiple database results gracefully.
-- Search & Destroy quickwhere doesn't show the name of the actual mob it found.
-- It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths.
+- Window does not update immediately after toggling Short Resists mode or whitelist changes
+- The order of damage types in whitelist menu can change, but they still work correctly
+- seekrep and seekdb only take one keyword as a name argument
+- Window enemy/target can only show one mob even if there are multiple database results
+- Search & Destroy quickwhere doesn't show the name of the actual mob found in SeekDB
+- It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths
 
 ## Future Updates
 - Option to show and group resist values
