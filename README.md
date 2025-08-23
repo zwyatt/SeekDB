@@ -54,6 +54,7 @@ Mob immunites are shown in red.
 Data is stored in SeekDB.db.
 
 ## Known Issues
+- SnD target results can be incorrect if multiple mobs have the same keywords i.e. the lumberjack, the lumberjack's wife. This is a result of having both quest/cp/etc targets AND quickwhere targets - which use keywords instead of exact mob name - in the window.
 - Window does not update immediately after toggling Short Resists mode or whitelist changes
 - The order of damage types in whitelist menu can change, but they still work correctly
 - seekrep and seekdb only take one keyword as a name argument
