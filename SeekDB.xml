@@ -14,7 +14,7 @@
    purpose="Report and store Seek data."
    date_written="2025-06-27 18:59:39"
    requires="5.07"
-   version="1.151"
+   version="1.6"
    save_state="y"
    >
 <description trim="y">
@@ -33,14 +33,61 @@ Seek clanskill ouput reporter and database.
 
 </plugin>
 
+<!-- Triggers -->
+
+<triggers>
+   <trigger
+      name="seek_start"
+      enabled="y"
+      match="^-{64}$"
+      regexp="y"
+      omit_from_output="y"
+      sequence="100"
+      send_to="12"
+   >
+      <send>
+         EnableTrigger("seek_start", false)
+         EnableTrigger("seek_capture", true)
+         EnableTrigger("seek_end", true)
+      </send>
+   </trigger>
+   <trigger
+      name="seek_capture"
+      enabled="n"
+      match="^(?!-{64}).+"
+      regexp="y"
+      omit_from_output="y"
+      sequence="100"
+      script="seek_trigger_capture"
+   />
+   <trigger
+      name="seek_end"
+      enabled="n"
+      match="^-{64}$"
+      regexp="y"
+      omit_from_output="y"      
+      sequence="100"
+      script="seek_trigger_end"
+      send_to="12"
+   >
+      <send>
+         EnableTrigger("seek_start", true)
+         EnableTrigger("seek_capture", false)
+         EnableTrigger("seek_end, false")
+      </send>
+   </trigger>
+</triggers>
+
+
 <!-- Aliases -->
 
 <aliases>
   <alias match="^seekrep\s(?<name>((\d*\.)?\S+))\s?(?<dir>(top|bot|all|immcheck|verbose))?\s?(?<qty>\d+)?" script="startSeek" regexp="y" enabled="y" group="seekrep" send_to="12" sequence="100" ></alias>
+  <alias match="seekrep toggle" enabled="y" script="seekrep_toggle" sequence="99" />
   <alias match="^seekdb\s?(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>
-  <alias script="OnHelp" match="seekdb help" enabled="y"></alias>
-  <alias match="seekdb update check" enabled="y" script="update_check_alias" sequence="99"/>
-  <alias match="seekdb update install" enabled="y" script="update_install_alias" sequence="99"/>
+  <alias match="seekdb help" script="OnHelp" enabled="y"></alias>
+  <alias match="seekdb update check" enabled="y" script="update_check" sequence="99"/>
+  <alias match="seekdb update install" enabled="y" script="update_install" sequence="99"/>
   <alias match="^seekrep config(\s((?<command>(channel|rvcolor|rncolor|sepcolor|output)) (?<value>.+)))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config(\s((?<command>(output)) (?<value>(echo|channel|both))))?$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>
   <alias match="^seekrep config (?<command>reset|help)$" enabled="y" regexp="y" script="config_handler" sequence="99"></alias>

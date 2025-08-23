@@ -1,23 +1,92 @@
---   version="1.151"
+--   version="1.6"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
 
-seekrep_ready = true
+-------------------------- DebugNote -----------------------------
+-- Credit: Crowley SnD
+local debug_mode = GetVariable("debug_mode") or "off"
+NOTE_COLORS = {
+    DEBUG = "#87CEFA",
+    DEBUG_HIGHLIGHT = "#FFD700"
+}
 
-function seekFail()
-  Note("Seek capture timed out. Try again.")
-  seekrep_ready = true
+function debug_toggle()
+  if debug_mode == "on" then
+    DebugNote("Debug mode is now off.")
+    debug_mode = "off"
+  else
+    debug_mode = "on"
+    DebugNote("Debug mode is now on.")
+  end
+  SetVariable("debug_mode", debug_mode)
+end
+
+function DebugNote(...)
+    if debug_mode == "on" then
+        ColourTell(NOTE_COLORS.DEBUG_HIGHLIGHT, "", "DEBUG: ")
+        print_alternating_note({...}, NOTE_COLORS.DEBUG, NOTE_COLORS.DEBUG_HIGHLIGHT)
+    end
+end
+
+function print_alternating_note(messages, regular_color, highlight_color, background)
+    local current_color, other_color = regular_color, highlight_color
+    background = background or ""
+
+    for i, message in ipairs(messages) do
+        ColourTell(current_color, background, message)
+        current_color, other_color = other_color, current_color
+    end
+    print("")
+end
+-------------------------- End DebugNote -------------------------
+
+
+function seek_trigger_capture(name, line, args)
+  table.insert(trigger_lines, line)
+end
+
+function seek_trigger_end()
+  processCapture(trigger_lines)
+  trigger_lines = {}
+end
+
+-- [[ Set seek trigger 'omit_from_output' on or off ]] -- 
+function set_omit(value)
+  SetTriggerOption("seek_start", "omit_from_output", value)
+  SetTriggerOption("seek_capture", "omit_from_output", value)
+  SetTriggerOption("seek_end", "omit_from_output", value)
+end
+
+function seek_init()
+  seekrep_enabled = tostring(GetVariable("seekrep_enabled")) or true
+  seekrep_enabled = seekrep_enabled == "true"
+  if not seekrep_enabled then set_omit("n") end
+  trigger_lines = {}
+end
+
+seek_init()
+
+function seekrep_toggle()
+  seekrep_enabled = not seekrep_enabled
+  SetVariable("seekrep_enabled", tostring(seekrep_enabled))
+  if seekrep_enabled then
+    set_omit("y")
+    Note("Seekrep reporting enabled.")
+  else
+    set_omit("n")
+    Note("Seekrep reporting disabled.")
+  end
 end
 
 function initTarget()
-targetArray = {
-  shortn = "",
-  baselev = 0,
-  timeskilled = 0,
-  align = "",
-  identical = 0,
-  immunities={
+  local targetArray = {
+    shortn = "",
+    baselev = 0,
+    timeskilled = 0,
+    align = "",
+    identical = 0,
+    immunities={
     {immuName="Air", immuVal=false, immuType="magic" },
     {immuName="Acid", immuVal=false, immuType="magic" },
     {immuName="Bash", immuVal=false, immuType="physical" },
@@ -38,9 +107,9 @@ targetArray = {
     {immuName="Slash", immuVal=false, immuType="physical" },
     {immuName="Sonic", immuVal=false, immuType="magic" },
     {immuName="Water", immuVal=false, immuType="magic" }
-  },
-  notes = "",
-  resists={
+    },
+    notes = "",
+    resists={
     {resName="Air", resval=0},
     {resName="Acid", resval=0},
     {resName="Bash", resval=0},
@@ -61,70 +130,13 @@ targetArray = {
     {resName="Slash", resval=0},
     {resName="Sonic", resval=0},
     {resName="Water", resval=0}
+    }
   }
-}
+  return targetArray
 end
 
 function trim(s)
   return(string.gsub(s, "^%s*(.-)%s*$", "%1"))
-end
-
-function resSplit(instring)
-  split1 = trim(string.sub(instring,0,31))
-  split2 = trim(string.sub(instring,31,58))
-  if(split1 ~= "") then
-    local tbl = resSubSplit(split1)
-    for i,j in ipairs(targetArray.resists) do
-        if j.resName == tbl[1] then j.resval = tonumber(tbl[2]) end
-    end
-  end
-  if (split2 ~= "") then
-    local tbl=resSubSplit(split2)
-    for i,j in ipairs(targetArray.resists) do
-        if j.resName == tbl[1] then j.resval = tonumber(tbl[2]) end
-    end
-  end
-end
-
-function resSubSplit(instring)
-  local splitTable = {}
-  for str in string.gmatch(instring,"([^:]+)") do
-    local tmpstr = string.gsub(str,"%%","")
-    table.insert(splitTable,trim(tmpstr))
-  end
-  return splitTable
-end
-
-function parseImm(input)
-  for _,j in pairs(input) do
-    for x,y in ipairs(targetArray.immunities) do
-      if string.lower(targetArray.immunities[x].immuName) == trim(string.lower(j)) then
-        targetArray.immunities[x].immuVal = true
-      elseif trim(string.lower(j)) == "allmagic" then
-        if targetArray.immunities[x].immuType == "magic" then targetArray.immunities[x].immuVal = true end
-      elseif trim(string.lower(j)) == "allphysical" then
-        if targetArray.immunities[x].immuType == "physical" then targetArray.immunities[x].immuVal = true end
-      end
-    end
-  end
-end
-
-function showVuln()
-  local sepColor = getSepColor()
-  local resNameColor = getResNameColor()
-  local resValColor = getResValColor()
-
-  local outString = resNameColor .. targetArray.shortn .. " NOT immune to: "
-  local vulnArray = {}
-  for i=1,#targetArray.immunities do
-    if not targetArray.immunities[i].immuVal then
-      table.insert(vulnArray,targetArray.immunities[i].immuName)
-    end
-  end
-  catString = table.concat(vulnArray,", " )
-  catSring = string.gsub(catString,", ",sepColor..", "..resValColor)
-  outString = outString .. resValColor .. catString
-  return outString
 end
 
 function OnHelp ()
@@ -133,13 +145,13 @@ function OnHelp ()
   local cmdColor = "@W"
   
   colorsToAnsiNote(borderColor .. "------------------" .. textColor .. " SeekDB Help " .. borderColor .. "------------------")
-  Note()
-  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "Initial Setup" .. borderColor .. "==--")
+  colorsToAnsiNote(borderColor .. "--== " .. textColor .. "Initial Setup" .. borderColor .. " ==--")
   colorsToAnsiNote(textColor .. "After the first installation, run " .. cmdColor .. "seekrep config help")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. " General Use " .. borderColor .. "==--")
+  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Seek and SeekRep will both add targets to the database " .. borderColor .. "=-")
+  colorsToAnsiNote(cmdColor .. "seek <target>")
   Note()
-  colorsToAnsiNote(borderColor .. "- " .. textColor .. "Add a mob to the database (and report seek too, I guess) " .. borderColor .. "-")
   colorsToAnsiNote(cmdColor .. "seekrep <target> [top|bot] [quantity]")
   colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "    Required. Single keyword of target. Ordinal targets are ok (1.lasher,")
   colorsToAnsiNote(textColor .. "               2.lasher, etc.) multiple words or quotes are not.")
@@ -150,14 +162,16 @@ function OnHelp ()
   colorsToAnsiNote(cmdColor .. "               verbose" .. textColor .. " is mostly used for debugging right now.")
   colorsToAnsiNote(cmdColor .. "   [quantity]" .. textColor .. "  Optional. Restricts quantity of results.")
   Note()
-  colorsToAnsiNote(borderColor .. "- " .. textColor .. "Search for a mob in the database " .. borderColor .. "-")
+  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Switch SeekRep on and off for normal seek. Using SeekRep on a target will switch it on. " .. borderColor .. "=-")
+  colorsToAnsiNote(cmdColor .. "seekrep toggle")
+  Note()
+  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Search for a mob in the database " .. borderColor .. "=-")
   colorsToAnsiNote(cmdColor .. "seekdb <target> <area>")
   colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "   Optional. Single keyword of target. 'all' to search for all mobs in the area.")
   colorsToAnsiNote(cmdColor .. "   <area>" .. textColor .. "     Optional. Defaults to current area. 'all' to search in every area. Must match")
   colorsToAnsiNote(textColor .. "              area keyword exactly.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples   " .. borderColor .. "==--")
-  Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher top 3" .. textColor .. "  Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his highest 3 resistances.")
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher 5" .. textColor .. "      Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his lowest 5 resistances.")
@@ -166,10 +180,10 @@ function OnHelp ()
   Note()
   colorsToAnsiNote(cmdColor .. "seekdb all aylor" .. textColor .. "      Searches DB for all mobs in the area 'aylor'.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekdb imp all" .. textColor .. "        Searches DB for all mobs with 'imp' in the name.")
+  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Right-Click Menu   " .. borderColor .. "==--")
+  colorsToAnsiNote(textColor .. "Right-click on the miniwindow to customize the font, colours, whitelists, etc.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Updating   " .. borderColor .. "==--")
-  Note()
   colorsToAnsiNote(cmdColor .. "seekdb update check" .. textColor .. "   Checks if there's an update to the plugin.")
   colorsToAnsiNote(cmdColor .. "seekdb update install" .. textColor .. " Installs any available updates to this plugin.")
   colorsToAnsiNote(borderColor .. "--------------------------------------------------")
@@ -177,75 +191,190 @@ end
 
 
 function startSeek(name, line, args)
-  if not seekrep_ready then
-    Note("Seekrep is on cooldown (2 seconds) or waiting for database operations to finish.")
-    return
-  end
-  seekrep_ready = false
+  seekrep_enabled = true
+  SetVariable("seekrep_enabled", tostring(seekrep_enabled))
+  set_omit("y")
   target = args.name
   dir = args.dir or "nil"
   qty = tonumber(args.qty) or -1
-  initTarget()
 
   local command = "seek " .. target
-  local startTag = "^----------------------------------------------------------------$"
-  local endTag = "^----------------------------------------------------------------$"
-  local tagsAreRegex=true
-  local noCommandEcho=false
-  local omitResponse=true
-  local noFollowPrompt=false
-  local sendViaExecute=true
-  local timeoutDuration=2
-
-  Capture.tagged_output(command,startTag,endTag,tagsAreRegex,noCommandEcho,omitResponse,noFollowPrompt,processCapture,sendViaExecute,seekFail,timeoutDuration)
+  Send(command)
 end
 
-function processCapture(lines)
+function processCapture(lines, db_ready)
+  local targetArray = initTarget()
+
+  function resSplit(instring)
+    split1 = trim(string.sub(instring,0,31))
+    split2 = trim(string.sub(instring,31,58))
+    if(split1 ~= "") then
+      local tbl = resSubSplit(split1)
+      for i,j in ipairs(targetArray.resists) do
+        if j.resName == tbl[1] then j.resval = tonumber(tbl[2]) end
+      end
+    end
+    if (split2 ~= "") then
+      local tbl=resSubSplit(split2)
+      for i,j in ipairs(targetArray.resists) do
+        if j.resName == tbl[1] then j.resval = tonumber(tbl[2]) end
+      end
+    end
+  end
+
+  function resSubSplit(instring)
+    local splitTable = {}
+    for str in string.gmatch(instring,"([^:]+)") do
+      local tmpstr = string.gsub(str,"%%","")
+      table.insert(splitTable,trim(tmpstr))
+    end
+    return splitTable
+  end
+
+  function parseImm(input)
+    for _,j in pairs(input) do
+      for x,y in ipairs(targetArray.immunities) do
+        if string.lower(targetArray.immunities[x].immuName) == trim(string.lower(j)) then
+          targetArray.immunities[x].immuVal = true
+        elseif trim(string.lower(j)) == "allmagic" then
+          if targetArray.immunities[x].immuType == "magic" then targetArray.immunities[x].immuVal = true end
+        elseif trim(string.lower(j)) == "allphysical" then
+          if targetArray.immunities[x].immuType == "physical" then targetArray.immunities[x].immuVal = true end
+        end
+      end
+    end
+  end
+
+  function showVuln()
+    local sepColor = getSepColor()
+    local resNameColor = getResNameColor()
+    local resValColor = getResValColor()
+
+    local outString = resNameColor .. targetArray.shortn .. " NOT immune to: "
+    local vulnArray = {}
+    for i=1,#targetArray.immunities do
+      if not targetArray.immunities[i].immuVal then
+        table.insert(vulnArray,targetArray.immunities[i].immuName)
+      end
+    end
+    catString = table.concat(vulnArray,", " )
+    catSring = string.gsub(catString,", ",sepColor..", "..resValColor)
+    outString = outString .. resValColor .. catString
+    return outString
+  end
+
+  function getVal(searchStr)
+    for i,j in pairs(targetArray.resists) do
+      if string.lower(j.resName) == string.lower(searchStr) then
+          return j.resval
+      end
+    end
+    --  tprint(targetArray.resists)
+    return 0
+  end
+
+  function getTableX(amount,direction)
+    local outTable = {}
+    if(direction == "top") then --sort largest -> smallest
+      table.sort(targetArray.resists,tblGT)
+    else -- sort smallest -> largest. default for now, probably most common.
+      table.sort(targetArray.resists,tblLT)
+    end
+    if amount<1 then amount=#targetArray.resists end
+    if amount>#targetArray.resists then amount=#targetArray.resists end --lol ty scars
+      for x=1,amount do
+          table.insert(outTable,targetArray.resists[x])
+      end
+    return outTable
+  end
+
+  function tableString(intab)
+    local buildString = ""
+    local sepColor = getSepColor()
+    local resNameColor = getResNameColor()
+    local resValColor = getResValColor()
+    local dupVals = false
+    --  local lastVal = -1
+
+    buildString = resNameColor .. "Target: " .. resValColor .. targetArray.shortn .. sepColor .. " | "
+    for x=1,#intab do
+      if (x+1<=#intab) and (intab[x].resval == intab[x+1].resval) then
+        --resval and resval+1 are equal, enter duplicate cluster loop
+        if dupVals==false then --previous loop was not a duplicate loop, start duplicate loop
+          dupVals = true
+        end
+        buildString = buildString .. resNameColor .. intab[x].resName
+      elseif (dupVals ==true and x==#intab) then --last record, gotta check if dupvals flag is set
+        buildString = buildString .. resNameColor .. intab[x].resName .. " " .. resValColor .. intab[x].resval .. "%" .. sepColor .. " | @w"
+        dupVals = false
+      else
+        if dupVals == true then
+          buildString = buildString ..intab[x].resName .. " " .. resValColor .. intab[x].resval .. "%".. sepColor .. " | @w"
+          dupVals = false
+        else
+          buildString = buildString .. resNameColor.. intab[x].resName..": "..resValColor ..intab[x].resval .. "%" .. sepColor .. " | @w"
+        end
+      end
+
+      if dupVals == true then 
+        buildString = buildString .. ", "
+      end
+  --[[ uncomment to restore to old functionality
+      buildString = buildString .. resNameColor.. intab[x].resName..": "..resValColor ..intab[x].resval .. "%" .. sepColor .. " | @w"
+      ]]
+    end
+
+    return buildString
+  end
+
   new_table = {}
   local outText = ""
 
   --remove color data etc
   for k, v in ipairs(lines) do
-      stripped = strip_colours_from_styles(v)
-      if (stripped ~= "" and 
-          stripped ~="------------------------- [ Resistances ] ----------------------") then
-          table.insert(new_table, stripped)
-      end
+    stripped = v
+
+    if (stripped ~= "" and 
+        stripped ~="------------------------- [ Resistances ] ----------------------") then
+        table.insert(new_table, stripped)
+    end
   end
 
   --process de-colored data
   for i,j in ipairs(new_table) do
-      if string.find(j,"Mob Short Name") ~=nil then
-        targetArray.shortn = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"Mob Base Level") ~= nil then
-        targetArray.baselev = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"Identical Mobs") ~= nil then
-        targetArray.identical = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"Times Killed") ~= nil then
-        targetArray.timeskilled = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"Alignment") ~= nil then
-        targetArray.align = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"Note") ~= nil then
-        targetArray.notes = trim(string.match(j, ":(.*)"))
-      elseif string.find(j,"%a+%s+:%s+[-%.%d]+") ~= nil then
-        resSplit(j)
-      elseif string.find(j,"Immunities") ~= nil then
-        parseImm(utils.split(trim(string.match(j, ":(.*)")),","))
-      elseif string.find(j,"(%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s)(.*)") ~= nil then
-        parseImm(utils.split(trim(j),","))
-      end
+    if string.find(j,"Mob Short Name") ~=nil then
+      targetArray.shortn = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"Mob Base Level") ~= nil then
+      targetArray.baselev = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"Identical Mobs") ~= nil then
+      targetArray.identical = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"Times Killed") ~= nil then
+      targetArray.timeskilled = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"Alignment") ~= nil then
+      targetArray.align = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"Note") ~= nil then
+      targetArray.notes = trim(string.match(j, ":(.*)"))
+    elseif string.find(j,"%a+%s+:%s+[-%.%d]+") ~= nil then
+      resSplit(j)
+    elseif string.find(j,"Immunities") ~= nil then
+      parseImm(utils.split(trim(string.match(j, ":(.*)")),","))
+    elseif string.find(j,"(%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s)(.*)") ~= nil then
+      parseImm(utils.split(trim(j),","))
+    end
   end
 
-  new_seek()
+  new_seek(targetArray)
 
-  if dir == "verbose" then
+  if not seekrep_enabled then return end
+
+  if dir == "all" then
+    redrawSeek(targetArray)
+  elseif dir == "verbose" then
     tprint(targetArray)
-  elseif dir=="immcheck" then
-    outText = showVuln()
-  elseif dir=="all" then
-    redrawSeek()
+  elseif dir == "immcheck" then
+    outText = showVuln()    
   else
-    if qty>0 then
+    if qty and qty>0 then
       outText = tableString(getTableX(qty,dir))
     else
       --tprint(targetArray)
@@ -255,7 +384,7 @@ function processCapture(lines)
     end
   end
 
-if outText ~= "" then
+  if outText ~= "" then
     outType = getOutput()
     if (outType == "echo") or (outType == "both") then
       colorsToAnsiNote(outText)
@@ -266,7 +395,7 @@ if outText ~= "" then
   end
 end
 
-function redrawSeek()
+function redrawSeek(targetArray)
   colorsToAnsiNote("@W----------------------------------------------------------------@w")
   colorsToAnsiNote("@WYour research into @R" .. targetArray.shortn .. "@W reveals the following .... @w")
   Note() --"@W"
@@ -289,18 +418,6 @@ function redrawSeek()
   colorsToAnsiNote("@gPoison          @W:@g    " .. getVal("Poison") .. "%      Shadow          @W:@g    " .. getVal("Shadow") .. "% @w")
   colorsToAnsiNote("@gSonic           @W:@g    " .. getVal("Sonic") .. "%      Water           @W:@g    " .. getVal("Water") .. "% @w")
   colorsToAnsiNote("@W---------------------------------------------------------------- @w")
-
-
-end
-
-function getVal(searchStr)
-  for i,j in pairs(targetArray.resists) do
-    if string.lower(j.resName) == string.lower(searchStr) then
-        return j.resval
-    end
-  end
---  tprint(targetArray.resists)
-  return 0
 end
 
 function colorsToAnsiNote(data)
@@ -313,60 +430,6 @@ end
 
 function tblGT(a,b)
   return b.resval<a.resval
-end
-
-function getTableX(amount,direction)
-  local outTable = {}
-  if(direction == "top") then --sort largest -> smallest
-    table.sort(targetArray.resists,tblGT)
-  else -- sort smallest -> largest. default for now, probably most common.
-    table.sort(targetArray.resists,tblLT)
-  end
-  if amount<1 then amount=#targetArray.resists end
-  if amount>#targetArray.resists then amount=#targetArray.resists end --lol ty scars
-    for x=1,amount do
-        table.insert(outTable,targetArray.resists[x])
-    end
-  return outTable
-end
-
-function tableString(intab)
-  local buildString = ""
-  local sepColor = getSepColor()
-  local resNameColor = getResNameColor()
-  local resValColor = getResValColor()
-  local dupVals = false
---  local lastVal = -1
-
-  buildString = resNameColor .. "Target: " .. resValColor .. targetArray.shortn .. sepColor .. " | "
-  for x=1,#intab do
-    if (x+1<=#intab) and (intab[x].resval == intab[x+1].resval) then
-      --resval and resval+1 are equal, enter duplicate cluster loop
-      if dupVals==false then --previous loop was not a duplicate loop, start duplicate loop
-        dupVals = true
-      end
-      buildString = buildString .. resNameColor .. intab[x].resName
-    elseif (dupVals ==true and x==#intab) then --last record, gotta check if dupvals flag is set
-      buildString = buildString .. resNameColor .. intab[x].resName .. " " .. resValColor .. intab[x].resval .. "%" .. sepColor .. " | @w"
-      dupVals = false
-    else
-      if dupVals == true then
-        buildString = buildString ..intab[x].resName .. " " .. resValColor .. intab[x].resval .. "%".. sepColor .. " | @w"
-        dupVals = false
-      else
-        buildString = buildString .. resNameColor.. intab[x].resName..": "..resValColor ..intab[x].resval .. "%" .. sepColor .. " | @w"
-      end
-    end
-
-    if dupVals == true then 
-      buildString = buildString .. ", "
-    end
---[[ uncomment to restore to old functionality
-    buildString = buildString .. resNameColor.. intab[x].resName..": "..resValColor ..intab[x].resval .. "%" .. sepColor .. " | @w"
-    ]]
-  end
-
-  return buildString
 end
 
 function config_handler(name, line, args)
@@ -502,200 +565,106 @@ end
 
 ---------------------- End SeekRep Code ---------------------
 
+
 ----------------------- Database Code -----------------------
-local db_path = GetPluginInfo(GetPluginID(), 20) .. "SeekDB.db"
-db = sqlite3.open(db_path)
--- db = sqlite3.open_memory()
+db_path = GetPluginInfo(GetPluginID(), 20) .. "SeekDB.db"
 
-db:exec[[
-  CREATE TABLE IF NOT EXISTS mob (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    area TEXT,
-    level INTEGER,
-    align TEXT,
-    resistsID INTEGER,
-    immunitiesID integer,
-    FOREIGN KEY(resistsID) REFERENCES resists(id),
-    FOREIGN KEY(immunitiesID) REFERENCES immunities(id)
-  );
+function open_db()
+  return assert(sqlite3.open(db_path))
+end -- open_db --
 
-  CREATE TABLE IF NOT EXISTS resists (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    air REAL,
-    acid REAL,
-    bash REAL,
-    cold REAL,
-    disease REAL,
-    earth REAL,
-    electric REAL,
-    energy REAL,
-    fire REAL,
-    holy REAL,
-    light REAL,
-    magic REAL,
-    mental REAL,
-    negative REAL,
-    pierce REAL,
-    poison REAL,
-    shadow REAL,
-    slash REAL,
-    sonic REAL,
-    water REAL
-  );
-
-  CREATE TABLE IF NOT EXISTS immunities (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    air INTEGER,
-    acid INTEGER,
-    bash INTEGER,
-    cold INTEGER,
-    disease INTEGER,
-    earth INTEGER,
-    electric INTEGER,
-    energy INTEGER,
-    fire INTEGER,
-    holy INTEGER,
-    light INTEGER,
-    magic INTEGER,
-    mental INTEGER,
-    negative INTEGER,
-    pierce INTEGER,
-    poison INTEGER,
-    shadow INTEGER,
-    slash INTEGER,
-    sonic INTEGER,
-    water INTEGER
-  );
-]]
-
---[[ Helpers ]]--
-
--- Credit: Crowley SnD
-local debug_mode = GetVariable("debug_mode") or "off"
-NOTE_COLORS = {
-    INFO = "#FF5000",
-    INFO_HIGHLIGHT = "#00B4E0",
-    IMPORTANT = "#FFFFFF",
-    IMPORTANT_HIGHLIGHT = "#00FF00",
-    IMPORTANT_BACKGROUND = "#000080",
-    ERROR = "#FFFFFF",
-    ERROR_HIGHLIGHT = "#FFE32E",
-    ERROR_BACKGROUND = "#650101",
-    DEBUG = "#87CEFA",
-    DEBUG_HIGHLIGHT = "#FFD700"
-}
-
-function debug_toggle()
-  if debug_mode == "on" then
-    DebugNote("Debug mode is now off.")
-    debug_mode = "off"
-  else
-    debug_mode = "on"
-    DebugNote("Debug mode is now on.")
+function sql_exec(query, need_id)
+  DebugNote(query)
+  local db = open_db()
+  local result = nil
+  assert(db:exec(query))
+  if need_id then
+   result = db:last_insert_rowid()
   end
-  SetVariable("debug_mode", debug_mode)
+  db:close_vm()
+  db:close()
+  return result
+end -- sql_exec --
+
+function sql_prepare(query)
+  DebugNote(query)
+  local db = open_db()
+  local result = assert(db:prepare(query))
+  return db, result
+end -- sql_prepare --
+
+function error_handler(context, error)
+  Note(context)
+  Note(error)
 end
 
+function create_tables()
+  local query = [[
+    CREATE TABLE IF NOT EXISTS mob (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      area TEXT,
+      level INTEGER,
+      align TEXT,
+      resistsID INTEGER,
+      immunitiesID integer,
+      FOREIGN KEY(resistsID) REFERENCES resists(id),
+      FOREIGN KEY(immunitiesID) REFERENCES immunities(id)
+    );
 
--- Credit: Crowley SnD
-function DebugNote(...)
-    if debug_mode == "on" then
-        ColourTell(NOTE_COLORS.DEBUG_HIGHLIGHT, "", "DEBUG: ")
-        print_alternating_note({...}, NOTE_COLORS.DEBUG, NOTE_COLORS.DEBUG_HIGHLIGHT)
-    end
-end
+    CREATE TABLE IF NOT EXISTS resists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      air REAL,
+      acid REAL,
+      bash REAL,
+      cold REAL,
+      disease REAL,
+      earth REAL,
+      electric REAL,
+      energy REAL,
+      fire REAL,
+      holy REAL,
+      light REAL,
+      magic REAL,
+      mental REAL,
+      negative REAL,
+      pierce REAL,
+      poison REAL,
+      shadow REAL,
+      slash REAL,
+      sonic REAL,
+      water REAL
+    );
 
--- Credit: Crowley SnD
-function print_alternating_note(messages, regular_color, highlight_color, background)
-    local current_color, other_color = regular_color, highlight_color
-    background = background or ""
+    CREATE TABLE IF NOT EXISTS immunities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      air INTEGER,
+      acid INTEGER,
+      bash INTEGER,
+      cold INTEGER,
+      disease INTEGER,
+      earth INTEGER,
+      electric INTEGER,
+      energy INTEGER,
+      fire INTEGER,
+      holy INTEGER,
+      light INTEGER,
+      magic INTEGER,
+      mental INTEGER,
+      negative INTEGER,
+      pierce INTEGER,
+      poison INTEGER,
+      shadow INTEGER,
+      slash INTEGER,
+      sonic INTEGER,
+      water INTEGER
+    );
+  ]]
 
-    for i, message in ipairs(messages) do
-        ColourTell(current_color, background, message)
-        current_color, other_color = other_color, current_color
-    end
-    print("")
-end
+  sql_exec(query)
+end -- create_tables --
 
-
-function table.shallow_copy(xs)
-  local ys = {}
-  for k, v in pairs(xs) do
-    ys[k] = v
-  end
-  return ys
-end
-
-
-function table.merge(xs, ys)
-  for i, y in ipairs(ys) do
-    table.insert(xs, y)
-  end
-  return xs
-end
-
-evil = "@r"
-neutral = "@w"
-good = "@y"
-
-aligns = {
-  ["a Lord of Ruin"] = evil,
-  ["an Avatar of Darkness"] = evil,
-  ["a Harbinger of Doom"] = evil,
-  ["an Emissary of Evil"] = evil,
-  ["nefarious"] = evil,
-  ["wicked"] = evil,
-  ["diabolical"] = evil,
-  ["heartless"] = evil,
-  ["heinous"] = evil,
-  ["foul"] = evil,
-  ["cruel"] = evil,
-  ["corrupt"] = evil,
-  ["mean"] = evil,
-  ["unpleasant"] = evil,
-
-  ["grey"] = neutral,
-  ["neutral"] = neutral,
-
-  ["kind"] = good,
-  ["pure"] = good,
-  ["good"] = good,
-  ["righteous"] = good,
-  ["virtuous"] = good,
-  ["reverent"] = good,
-  ["beneficent"] = good,
-  ["angelic"] = good,
-  ["saintly"] = good,
-  ["seraphic"] = good,
-  ["an Emissary of Good"] = good,
-  ["a Harbinger of Hope"] = good,
-  ["an Avatar of Light"] = good,
-  ["a Lord of Angels"] = good
-}
-
-function align_colour(align)
-  DebugNote("Getting align_colour:")
-  return aligns[align]
-end -- align_colour --
-
-
-function exists(x)
-  return x and x ~= ""
-end -- exists --
-
-function is_empty(xs)
-  return next(xs) == nil
-end
-
-
-function fix_sql(sql)
-  if exists(sql) then
-    return Replace(sql, "'", "''", true)
-  end
-  return nil
-end -- fix_sql --
-
+create_tables()
 
 function read(area, name, exact_name)
   local area = fix_sql(area)
@@ -716,17 +685,15 @@ function read(area, name, exact_name)
   return read_by_area(area)
 end -- read --
 
-
 function read_by_id(id)
   local query = "SELECT * FROM mob WHERE id = '" .. id .. "'"
-  return assert(db:prepare(query))
+  return sql_prepare(query)
 end -- read_by_id --
 
-
 function read_by_area(area)
-  return assert(db:prepare("SELECT * FROM mob WHERE area = '" .. area  .. "'"))
+  local query = "SELECT * FROM mob WHERE area = '" .. area  .. "'"
+  return sql_prepare(query)
 end -- read_by_area --
-
 
 function keyword_query(name)
   local keywords = utils.split(name, " ")
@@ -739,46 +706,39 @@ function keyword_query(name)
       query = query .. " AND name LIKE '%" .. word .. "%'"
     end
   end
-
   return query
 end -- keyword_query --
 
 function read_by_keyword(name)
-  local kw_query = keyword_query(name)
-  local query = "SELECT * FROM mob WHERE" .. kw_query
-  return assert(db:prepare(query))
+  local query = "SELECT * FROM mob WHERE" .. keyword_query(name)
+  return sql_prepare(query)
 end -- read_by_keyword --
 
-
 function read_by_area_keyword(area, name)
-  local kw_query = keyword_query(name)
-  local query = "SELECT * FROM mob WHERE" .. kw_query .. " AND area = '" .. area .. "'"
-  return assert(db:prepare(query))
+  local query = "SELECT * FROM mob WHERE" .. keyword_query(name) .. " AND area = '" .. area .. "'"
+  return sql_prepare(query)
 end -- read_by_area_keyword --
-
 
 function read_by_area_name(area, name)
   local query = "SELECT * FROM mob WHERE area = '%s' AND name = '%s'"
   query = string.format(query, area, name)
-  return assert(db:prepare(query))
+  return sql_prepare(query)
 end -- read_by_area_name --
-
 
 function read_all()
   local query = "SELECT * FROM mob"
-  return assert(db:prepare(query))
+  return sql_prepare(query)
 end -- read_all --
 
-
 function read_resists(resists_id)
-  return assert(db:prepare("SELECT * FROM resists WHERE id = '" .. resists_id .. "'"))
+  local query ="SELECT * FROM resists WHERE id = '" .. resists_id .. "'"
+  return sql_prepare(query)
 end -- read_resists --
 
-
 function read_immunities(immunities_id)
-  return assert(db:prepare("SELECT * FROM immunities WHERE id = '" .. immunities_id .. "'"))
+  local query = "SELECT * FROM immunities WHERE id = '" .. immunities_id .. "'"
+  return sql_prepare(query)
 end -- read_immunities --
-
 
 function delete_entry(row)
   if exists(row) then
@@ -791,53 +751,50 @@ function delete_entry(row)
   end
 end -- delete_entry --
 
-
 function delete_mob(mob_id)
   if exists(mob_id) then
     DebugNote("Deleting mob: <" .. mob_id .. ">")
     local query = "DELETE FROM mob WHERE id = '" .. mob_id .. "'"
-    return assert(db:exec(query))
+    sql_exec(query)
   else
     DebugNote("Failure to delete_mob, no mob_id")
   end
 end -- delete_mob --
 
-
 function delete_resists(resists_id)
   if exists(resists_id) then
     DebugNote("Deleting resists: <" .. resists_id .. ">")
     local query = "DELETE FROM resists WHERE id = '" .. resists_id .. "'"
-    return assert(db:exec(query))
+    sql_exec(query)
   else
     DebugNote("Failure to delete_resists, no resists_id")
   end
 end -- delete_resists --
 
-
 function delete_immunities(immunities_id)
   if exists(immunities_id) then
     DebugNote("Deleting immunities: <" .. immunities_id .. ">") 
     local query = "DELETE FROM immunities WHERE id = '" .. immunities_id .. "'"
-    return assert(db:exec(query))
+    sql_exec(query)
   else
     DebugNote("Failure to delete_immunities, no immunities_id")
   end
 end -- delete_immunities --
-
 
 --[[ alias: seekdb delete <id> ]]--
 function delete_check(x, y, args)
   if debug_mode == "on" then
     local id = args.id
     DebugNote("Delete check: <" .. id .. ">")
-    local results = read_by_id(id)
+    db, results = read_by_id(id)
     local found = false
-
     for row in results:nrows() do
       found = true
       DebugNote("Are you sure you want to delete <" .. row.id .. "> " .. row.name .. "?")
       DebugNote("Confirm delete with 'seekdb delete " .. row.id .. " confirm'")
     end
+    results:finalize()
+    db:close()
 
     if not found then
       DebugNote("<" .. id .. "> not found in DB.")
@@ -845,21 +802,21 @@ function delete_check(x, y, args)
   else
     colorsToAnsiNote(textColor .. "Enable debug mode using 'seekdb debug' to delete entries.")
   end
-end -- delete_check --
-
+end -- delete_check -- 
 
 --[[ alias: seekdb delete <id> confirm ]]--
 function delete_confirm(x, y, args)
   if debug_mode == "on" then
     local id = args.id
     DebugNote("Delete confirm: <" .. id .. ">")
-    local results = read_by_id(id)
+    local db, results = read_by_id(id)
     local found = false
-
     for row in results:nrows() do
       found = true
       delete_entry(row)
     end
+    results:finalize()
+    db:close()
 
     if not found then
       DebugNote("<" .. id .. "> not found in DB.")
@@ -868,59 +825,117 @@ function delete_confirm(x, y, args)
 end -- delete_confirm --
 
 
+--[[ Helpers ]]--
+
+function table.shallow_copy(xs)
+  local ys = {}
+  for k, v in pairs(xs) do
+    ys[k] = v
+  end
+  return ys
+end -- shallow_copy --
+
+function table.merge(xs, ys)
+  for i, y in ipairs(ys) do
+    table.insert(xs, y)
+  end
+  return xs
+end -- merge --
+
+evil = "@r"
+neutral_mob = "@w"
+good = "@y"
+
+aligns = {
+  ["a Lord of Ruin"] = evil,
+  ["an Avatar of Darkness"] = evil,
+  ["a Harbinger of Doom"] = evil,
+  ["an Emissary of Evil"] = evil,
+  ["nefarious"] = evil,
+  ["wicked"] = evil,
+  ["diabolical"] = evil,
+  ["heartless"] = evil,
+  ["heinous"] = evil,
+  ["foul"] = evil,
+  ["cruel"] = evil,
+  ["corrupt"] = evil,
+  ["mean"] = evil,
+  ["unpleasant"] = evil,
+
+  ["grey"] = neutral_mob,
+  ["neutral"] = neutral_mob,
+
+  ["kind"] = good,
+  ["pure"] = good,
+  ["good"] = good,
+  ["righteous"] = good,
+  ["virtuous"] = good,
+  ["reverent"] = good,
+  ["beneficent"] = good,
+  ["angelic"] = good,
+  ["saintly"] = good,
+  ["seraphic"] = good,
+  ["an Emissary of Good"] = good,
+  ["a Harbinger of Hope"] = good,
+  ["an Avatar of Light"] = good,
+  ["a Lord of Angels"] = good
+}
+
+function align_colour(align)
+  DebugNote("Getting align_colour")
+  return aligns[align]
+end -- align_colour --
+
+function exists(x)
+  return x and x ~= ""
+end -- exists --
+
+function fix_sql(sql)
+  if exists(sql) then
+    return Replace(sql, "'", "''", true)
+  end
+  return nil
+end -- fix_sql --
+
 function get_area()
   return gmcp("room.info.zone")
-end
+end -- get_area --
 
-
-function trim_align()
-  targetArray.align = string.match(targetArray.align, " is (.*).")
-end
-
-
+-- [[ DB stores immunity value as 0 or 1, use to convert targetArray value to compare ]]
 function fix_bool(val)
-  if val == false then
-    return 0
+  if val then
+    return 1
   end
-  return 1
+  return 0
 end
+
 --[[ End helpers ]]--
 
-
---[[ Create resists entry ]]--
-function create_resists()
-  DebugNote("Creating resists entry:")
-
-  local resists_query = "INSERT INTO resists VALUES (NULL"
-  for _, resist in ipairs(targetArray.resists) do
-    resists_query = resists_query .. "," .. tostring(resist.resval)
+function create_resists(resists)
+  DebugNote("Creating resists entry")
+  local query = "INSERT INTO resists VALUES (NULL"
+  for _, resist in ipairs(resists) do
+    query = query .. "," .. tostring(resist.resval)
   end
-  resists_query = resists_query .. ");"
+  query = query .. ");"
 
-  assert(db:exec(resists_query))
-  return db:last_insert_rowid()
+  return sql_exec(query, true)
 end -- create_resists --
 
-
---[[ Create immunities entry ]]--
-function create_immunities()
-  DebugNote("Creating immunities entry:")
-
-  local immunities_query = "INSERT INTO immunities VALUES (NULL"
-  for _, immunity in ipairs(targetArray.immunities) do
-    immunities_query = immunities_query .. "," .. tostring(immunity.immuVal)
+function create_immunities(immunities)
+  DebugNote("Creating immunities entry")
+  local query = "INSERT INTO immunities VALUES (NULL"
+  for _, immunity in ipairs(immunities) do
+    query = query .. "," .. tostring(immunity.immuVal)
   end
-  immunities_query = immunities_query .. ");"
+  query = query .. ");"
 
-  assert(db:exec(immunities_query))
-  return db:last_insert_rowid()
+  return sql_exec(query, true)
 end -- create_immunities --
 
-
---[[ Create mob entry ]]--
-function create_mob(resists_id, immunities_id)
-  DebugNote("Creating mob_query:")
-  local mob_query = string.format(
+function create_mob(targetArray, resists_id, immunities_id)
+  DebugNote("Creating mob entry")
+  local query = string.format(
     "INSERT INTO mob VALUES (NULL, '%s', '%s', %i, '%s', %i, %i);",
     fix_sql(targetArray.shortn),
     get_area(),
@@ -928,58 +943,61 @@ function create_mob(resists_id, immunities_id)
     targetArray.align,
     resists_id,
     immunities_id)
-  DebugNote(mob_query)
-  assert(db:exec(mob_query))
+  sql_exec(query)
 end -- create_mob --
 
+VARIANCE = 5
 
 --[[ Compare seek and db resists ]]--
-function compare_resists(resists_id)
-  DebugNote("Comparing seek and DB resistances:")
-  local THRESHOLD = 5
-  local resists = read_resists(resists_id)
-  resists:step()
+function compare_resists(t_resists, resists_id)
+  DebugNote("Comparing seek and DB resistances")
+  local db, db_resists = read_resists(resists_id)
+  local are_equal = true
 
-  for i, resist in ipairs(targetArray.resists) do
-    local db_val = resists:get_value(i)
+  db_resists:step()
+
+  for i, resist in ipairs(t_resists) do
+    local db_val = db_resists:get_value(i)
     DebugNote("targetArray: " .. resist.resval .. " || db: " .. db_val)
 
-    -- +/- threshold to account for slight differences (from buffs/level?)
-    if resist.resval > db_val + THRESHOLD or resist.resval < db_val - THRESHOLD then
+    -- +/- variance to account for slight differences (from buffs/level?)
+    if resist.resval > db_val + VARIANCE or resist.resval < db_val - VARIANCE then
       DebugNote("Resistances not equal")
-      return false
+      are_equal = false
+      break
     end
   end
-
-  DebugNote("Resistances equal")
-  return true
+  db_resists:finalize()
+  db:close()
+  if are_equal then DebugNote("Resistances equal") end
+  return are_equal
 end -- check_resists --
 
-
 --[[ Compare seek and db immunities ]]--
-function compare_immunities(immunities_id)
-  DebugNote("Comparing seek and DB immunities:")
-  local immunities = read_immunities(immunities_id)
-  immunities:step()
+function compare_immunities(t_immunities, immunities_id)
+  DebugNote("Comparing seek and DB immunities")
+  local db, db_immunities = read_immunities(immunities_id)
+  local are_equal = true
+  db_immunities:step()
 
-  for i, immunity in ipairs(targetArray.immunities) do
-    local db_val = immunities:get_value(i)
+  for i, immunity in ipairs(t_immunities) do
+    local db_val = db_immunities:get_value(i)
     DebugNote("targetArray: " .. fix_bool(immunity.immuVal) .. " || db: " .. db_val)
 
     if fix_bool(immunity.immuVal) ~= db_val then
       DebugNote("Immunities not equal")
-      return false
+      are_equal = false
     end
   end
-
-  DebugNote("Immunities equal")
-  return true
+  if are_equal then DebugNote("Immunities equal") end
+  db_immunities:finalize()
+  db:close()
+  return are_equal
 end -- check_immunities --
 
-
 --[[ Compare seek and db mobs]]--
-function compare_seek_db(name, area, level, align, resists_id, immunities_id)
-  DebugNote("Comparing seek and DB attributes:")
+function compare_seek_db(targetArray, name, area, level, align, resists_id, immunities_id)
+  DebugNote("Comparing seek and DB attributes")
   DebugNote("db: " .. name .. " || seek: " .. targetArray.shortn)
   DebugNote("db: " .. area .. " || seek: " .. get_area())
   DebugNote("db: " .. align .. " || seek: " .. targetArray.align)
@@ -989,43 +1007,49 @@ function compare_seek_db(name, area, level, align, resists_id, immunities_id)
       area == get_area() and
       align == targetArray.align and
       tonumber(level) == tonumber(targetArray.baselev) and
-      compare_resists(resists_id) and
-      compare_immunities(immunities_id)
+      compare_resists(targetArray.resists, resists_id) and
+      compare_immunities(targetArray.immunities, immunities_id)
 end -- compare_seek_db --
 
-
---[[ Create DB entry from SeekRep ]]--
-function new_seek()
-  DebugNote("New seek:")
-  trim_align() -- trim targetArray.align
+--[[ Create DB entry from Seek ]]--
+function new_seek(targetArray)
+  DebugNote("New seek")
+  targetArray.align = string.match(targetArray.align, " is (.*).")
   local existing = false -- Check for duplicates in the db
-  local result = read(nil, targetArray.shortn, true)
+  local db, results = read(get_area(), targetArray.shortn, true) -- (area, name, exact_name)
 
-  for row in result:nrows() do
-    if compare_seek_db(row.name, row.area, row.level, row.align, row.resistsID, row.immunitiesID) then
-      DebugNote("Found in database")
+  for row in results:nrows() do
+    DebugNote(row.name)
+    DebugNote(row.area)
+    DebugNote(row.level)
+    DebugNote(row.align)
+    DebugNote(row.resistsID)
+    DebugNote(row.immunitiesID)
+    if compare_seek_db(
+        targetArray,
+        row.name,
+        row.area,
+        row.level,
+        row.align,
+        row.resistsID,
+        row.immunitiesID
+    ) then
+      Note("Seek complete: duplicate DB entry found.")
       existing = true
       break
     end
   end
-
-  if existing then
-    Note("Seekrep complete: duplicate DB entry found.")
-  elseif not existing then
-    Note("Seekrep complete: creating DB entry.")
-    local resists_id = create_resists()
-    local immunities_id = create_immunities()
-    create_mob(resists_id, immunities_id)
-    window_new_seek() -- Retry window target search
-  end
-
-  seekrep_ready = true
-end -- new_seek --
-
-
-function db_close()
+  results:finalize()
   db:close()
-end
+
+  if not existing then
+    Note("Seek complete: creating DB entry.")
+    local resists_id = create_resists(targetArray.resists)
+    local immunities_id = create_immunities(targetArray.immunities)
+    create_mob(targetArray, resists_id, immunities_id)
+    window_new_seek() -- Retry window target search
+  end  
+end -- new_seek --
 
 seekdb_results = {}
 
@@ -1034,28 +1058,28 @@ seekdb_results = {}
   - Search for mobs that match name and area or current area
 ]]--
 function read_seekdb(x, y, args)
-  DebugNote("Searching DB for seekdb:")
+  DebugNote("Searching DB for seekdb")
   seekdb_results = {}
   local found = false
-  local results = read(args.area, args.name)
+  local db, results = read(args.area, args.name)
 
   for row in results:nrows() do
     found = true
-    if pcall(function() Note(format_output(row)) end) then -- Output to main window 
+    if pcall(function() Note(format_output(row)) end) then -- Output to main window
       table.insert(seekdb_results, row_to_window_mob(row)) -- Load mobs for window
     else
-      DebugNote("Errors while running format_output, deleting entry.")
-      delete_entry(row)
+      DebugNote("Errors while running format_output.")
     end
   end
+  results:finalize()
+  db:close()
 
   if found then
     window_draw()
   else
     Note("No results from SeekDB.")
   end
-end -- read_target --
-
+end -- read_seekdb --
 
 --[[
   - Create output string for DB results
@@ -1063,95 +1087,147 @@ end -- read_target --
   - Weak/strong in descending order
 ]]--
 function format_output(mob)
-  DebugNote("Formatting output for seekdb results:")
+  DebugNote("Formatting output for seekdb results")
   local output = ""
   if debug_mode == "on" then
     output = "<" .. mob.id .. "> "
   end
 
   local colour = align_colour(mob.align)
-
-  output = output .. colour .. "(" .. neutral .. mob.name .. colour .. ") "
+  output = output .. colour .. "(@w" .. mob.name .. colour .. ") "
   local weak = "" 
+  local neutral = ""
   local strong = ""
   local immune = ""
-  weak, strong, immune = parse_resists(mob.resistsID, mob.immunitiesID)
+  weak, neutral, strong, immune = parse_resists(mob.resistsID, mob.immunitiesID)
+
   if exists(weak) then
     output = output .. "@w| @G" .. weak .. " "
   end
+  if exists(neutral) then
+    output = output .. "@w | " .. neutral .. " "
+  end
   if exists(strong) then
-    output = output .. "@w| @M" .. strong .. " "
+    output = output .. "@w| @x208" .. strong .. " "
   end
   if exists(immune) then
     output = output .. "@w| @R" .. immune
   end
-
   return colorsToAnsiNote(output)
 end -- format_output --
 
-
---[[ Group resists by weak/strong, immunities if all physical/all magical ]]--
+--[[ Group resists by weak/neutral/strong/immune, allphys/allmag ]]--
 function group_resists(resists_db, immunities_db)
-  local weak = {}
-  local strong = {}
-  local immune = {}
-  local phys_imms = {}
-  local mag_imms = {}
+  DebugNote("Grouping resists")
+  local targetArray = initTarget() -- base targetArray for immunity mag/phys types
+  local weak_phys = {}
+  local weak_mag = {}
+  local neutral_phys = {}
+  local neutral_mag = {}
+  local strong_phys = {}
+  local strong_mag = {}
+  local immune_phys = {}
+  local immune_mag = {}
+
+  -- [[ Split into physical/magic types ]] --
+  function type_split(type, name, phys, mag, resist)
+    if type == "physical" then
+      table.insert(phys, {name = name, value = resist})
+    else
+      table.insert(mag, {name = name, value = resist})
+    end
+    return phys, mag
+  end -- type_split --
+
+  -- [[ Merge physical/magic into one, combine allphys/allmag ]] --
+  function type_merge(phys, mag, wl)
+    function filter(xs)
+      local filtered = {}
+
+      for i, v in ipairs(xs) do
+        if wl[v.name] then
+          table.insert(filtered, v)
+        end
+      end
+      return filtered
+    end -- type_merge --
+
+    local group = {}
+
+    if #phys == 3 then
+      table.insert(group, {name = "All Physical"})
+    else
+      group = table.merge(group, filter(phys))
+    end
+
+    if #mag == 17 then
+      table.insert(group, {name = "All Magic"})
+    else
+      group = table.merge(group, filter(mag))
+    end
+    return group
+  end
 
   resists_db:step()
   immunities_db:step()
 
   for i, imm in ipairs(targetArray.immunities) do
+    local type = imm.immuType
+    local name = imm.immuName
     local db_resist = resists_db:get_value(i)
     local db_immunity = immunities_db:get_value(i)
 
     if db_immunity == 1 then
-      if imm.immuType == "magic" then
-        table.insert(mag_imms, imm.immuName)
-      else
-        table.insert(phys_imms, imm.immuName)
-      end
-    elseif db_resist <= weak_threshold and weak_whitelist[imm.immuName] then
-      table.insert(weak, {type = imm.immuName, value = db_resist})
-    elseif db_resist >= strong_threshold and strong_whitelist[imm.immuName] then
-      table.insert(strong, {type = imm.immuName, value = db_resist})
+      immune_phys, immune_mag = type_split(type, name, immune_phys, immune_mag)
+    elseif db_resist <= weak_threshold then
+      weak_phys, weak_mag = type_split(type, name, weak_phys, weak_mag, db_resist)
+    elseif db_resist >= strong_threshold then
+      strong_phys, strong_mag = type_split(type, name, strong_phys, strong_mag, db_resist)
+    else
+      neutral_phys, neutral_mag = type_split(type, name, neutral_phys, neutral_mag, db_resist)
     end
   end
 
-  -- Display "Magic" or "Physical" instead of individual immunities if mob is fully immune
-  if #phys_imms == 3 then
-    table.insert(immune, "All Physical")
-  else
-    for i, imm in ipairs(phys_imms) do
-      if immune_whitelist[imm] then
-        table.insert(immune, imm)
-      end
-    end
-  end
+  resists_db:finalize()
+  immunities_db:finalize()
 
-  if #mag_imms == 17 then
-    table.insert(immune, "All Magic")
-  else
-    for i, imm in ipairs(mag_imms) do
-      if immune_whitelist[imm] then
-        table.insert(immune, imm)
-      end
-    end
+  local weak = type_merge(weak_phys, weak_mag, weak_whitelist)
+  local strong = type_merge(strong_phys, strong_mag, strong_whitelist)
+  local immune = type_merge(immune_phys, immune_mag, immune_whitelist)
+  local neutral = {}
+  if #immune >= neutral_threshold then
+    neutral = type_merge(neutral_phys, neutral_mag, neutral_whitelist)
   end
-
-  return weak, strong, immune
+  return weak, neutral, strong, immune
 end -- group_resists --
 
-
 --[[ Sort weak in ascending order and strong in descending order ]]--
-function sort_resists(weak, strong)
-  table.sort(weak, function (a, b)
+function sort_resists(weak, neutral, strong)
+  function sort_ascending(a, b)
+    if a.name == "All Physical" then
+      return true
+    elseif a.name == "All Magic" then
+      return true
+    elseif b.name == "All Physical" or b.name == "All Magic" then
+      return false
+    end
     return a.value < b.value
-  end)
+  end
+
+  DebugNote("Sorting resists")
+  table.sort(weak, sort_ascending)
+  table.sort(neutral, sort_ascending)
   table.sort(strong, function (a, b)
+    if a.name == "All Physical" then
+      return true
+    elseif a.name == "All Magic" then
+      return true
+    elseif b.name == "All Physical" or b.name == "All Magic" then
+      return false
+    end
     return a.value > b.value
   end)
-  return weak, strong
+  return weak, neutral, strong
 end -- sort_resists --
 
 short_resists = {
@@ -1179,35 +1255,25 @@ short_resists = {
   ["Water"] = "Wtr"
 }
 
-separator = ", "
+SEPARATOR = ", "
 
 --[[ Concatenate resists/immunities to strings ]]--
-function conc_resists(weak, strong, immune)
+function conc_resists(weak, neutral, strong, immune)
+  DebugNote("Concatenating resists")
   function conc(resists)
     local conced = {}
 
     for i, res in ipairs(resists) do
-      if short_resists_enabled then res.type = short_resists[res.type] end
-      table.insert(conced, res.type)
+      if short_resists_enabled then res.name = short_resists[res.name] end
+      table.insert(conced, res.name)
     end
-
-    return table.concat(conced, separator)
+    return table.concat(conced, SEPARATOR)
   end
-
   weak = conc(weak)
+  neutral = conc(neutral)
   strong = conc(strong)
-  if immune then
-    if short_resists_enabled then
-      short_imms = {}
-      for i, imm in ipairs(immune) do
-        table.insert(short_imms, short_resists[imm])
-      end
-      immune = short_imms
-    end
-    immune = table.concat(immune, separator)
-  end
-
-  return weak, strong, immune
+  immune = conc(immune)
+  return weak, neutral, strong, immune
 end -- conc_resists --
 
 --[[
@@ -1216,11 +1282,14 @@ end -- conc_resists --
   - String concatenate
 ]]--
 function parse_resists(resists_id, immunities_id)
-  resists_db = read_resists(resists_id)
-  immunities_db = read_immunities(immunities_id)
-  weak, strong, immune = group_resists(resists_db, immunities_db)
-  weak, strong = sort_resists(weak, strong)
-  return conc_resists(weak, strong, immune)
+  DebugNote("Parsing resists")
+  local db1, resists_db = read_resists(resists_id)
+  local db2, immunities_db = read_immunities(immunities_id)
+  local weak, neutral, strong, immune = group_resists(resists_db, immunities_db)
+  db1:close()
+  db2:close()
+  weak, neutral, strong = sort_resists(weak, neutral, strong)
+  return conc_resists(weak, neutral, strong, immune)
 end -- parse_resists --
 
 ------------------------ End Database Code -----------------------
@@ -1228,10 +1297,33 @@ end -- parse_resists --
 ------------------------- Miniwindow Code ------------------------
 -- Credit: Fiendish's Stat Monitor plugin, more or less 
 
--- [[ Window init ]] --
-  require "mw_theme_base"
-  require "movewindow"
+require "mw_theme_base"
+require "movewindow"
 
+-- [[ Generate whitelist table from GetVariable string ]] --
+function parse_whitelist(wl)
+  if exists(wl) then
+    wl = utils.split(wl, " ")
+    local new_wl = table.shallow_copy(BASE_WHITELIST)
+    for i, res in ipairs(wl) do
+      new_wl[res] = true
+    end
+    return new_wl
+  else
+    return table.shallow_copy(DEFAULT_WHITELIST)
+  end
+end -- parse_whitelist --
+
+function generate_whitelist(bool)
+  local targetArray = initTarget() -- base targetArray for resist list
+  local wl = {}
+  for i, v in ipairs(targetArray.resists) do
+    wl[v.resName] = bool
+  end
+  return wl
+end
+
+function window_init()
   DEFAULT_WIDTH = 300
   DEFAULT_HEIGHT = 200
   DEFAULT_X = 50
@@ -1253,36 +1345,14 @@ end -- parse_resists --
 
   DEFAULT_BASE_COLOUR = ColourNameToRGB("white")
   DEFAULT_WEAK_COLOUR = ColourNameToRGB("green")
+  DEFAULT_NEUTRAL_COLOUR = ColourNameToRGB("gray")
   DEFAULT_STRONG_COLOUR = ColourNameToRGB("orange")
   DEFAULT_IMMUNE_COLOUR = ColourNameToRGB("red")
 
   DEFAULT_WEAK_THRESHOLD = -10
+  DEFAULT_NEUTRAL_THRESHOLD = 0
   DEFAULT_STRONG_THRESHOLD = 10
 
-  -- [[ Generate whitelist table from GetVariable string ]] --
-  function parse_whitelist(wl)
-    if exists(wl) then
-      wl = utils.split(wl, " ")
-      local new_wl = table.shallow_copy(BASE_WHITELIST)
-      for i, res in ipairs(wl) do
-        new_wl[res] = true
-      end
-      return new_wl
-    else
-      return table.shallow_copy(DEFAULT_WHITELIST)
-    end
-  end -- parse_whitelist --
-
-
-  function generate_whitelist(bool)
-    local wl = {}
-    for i, v in ipairs(targetArray.resists) do
-      wl[v.resName] = bool
-    end
-    return wl
-  end
-
-  initTarget()
   DEFAULT_WHITELIST = generate_whitelist(true)
   BASE_WHITELIST = generate_whitelist(false)
 
@@ -1290,23 +1360,30 @@ end -- parse_resists --
   short_resists_enabled = GetVariable("short_resists_enabled") == "true"
 
   weak_enabled = GetVariable("weak_enabled") or true
-  weak_enabled = weak_enabled == "true"
+  weak_enabled = tostring(weak_enabled) == "true"
   weak_threshold = tonumber(GetVariable("weak_threshold")) or DEFAULT_WEAK_THRESHOLD
   weak_whitelist = parse_whitelist(GetVariable("weak_whitelist"))
   weak_colour = GetVariable("weak_colour") or DEFAULT_WEAK_COLOUR
 
+  neutral_enabled = GetVariable("neutral_enabled") or true
+  neutral_enabled = tostring(neutral_enabled) == "true"
+  neutral_threshold = tonumber(GetVariable("neutral_threshold")) or DEFAULT_NEUTRAL_THRESHOLD
+  neutral_whitelist = parse_whitelist(GetVariable("neutral_whitelist"))
+  neutral_colour = GetVariable("neutral_colour") or DEFAULT_NEUTRAL_COLOUR
+
   strong_enabled = GetVariable("strong_enabled") or true
-  strong_enabled = strong_enabled == "true"
+  strong_enabled = tostring(strong_enabled) == "true"
   strong_threshold = tonumber(GetVariable("strong_threshold")) or DEFAULT_STRONG_THRESHOLD
   strong_whitelist = parse_whitelist(GetVariable("strong_whitelist"))
   strong_colour = GetVariable("strong_colour") or DEFAULT_STRONG_COLOUR
 
   immune_enabled = GetVariable("immune_enabled") or true
-  immune_enabled = immune_enabled == "true"
+  immune_enabled = tostring(immune_enabled) == "true"
   immune_whitelist = parse_whitelist(GetVariable("immune_whitelist"))
   immune_colour = GetVariable("immune_colour") or DEFAULT_IMMUNE_COLOUR
--- [[ End window init ]] --
+end
 
+window_init()
 
 function window_send_front()
   CallPlugin("462b665ecb569efbf261422f","boostMe", win)
@@ -1315,7 +1392,6 @@ end
 function window_send_back()
   CallPlugin("462b665ecb569efbf261422f","dropMe", win)
 end
-
 
 --[[ OnPluginInstall ]]--
 function window_install()
@@ -1394,7 +1470,10 @@ json = require 'json'
 gmcp_id = "3e7dedbe37e44942dd46d264"
 snd_id = "30000000537461726c696e67"
 
+new_entry = false
+last_status = ""
 enemy = ""
+last_enemy = {name = "", area = ""}
 snd_target = ""
 last_msg = 2
 
@@ -1405,18 +1484,26 @@ function window_broadcast(msg, id, name, text)
   local name = ""
   local area = ""
 
-  if id == gmcp_id and gmcp("char.status.pos") == "Fighting" then
-    name = gmcp("char.status.enemy")
-    area = get_area()
-    enemy = window_search_db(area, name, true)
-    enemy.name = "Enemy: " .. name
-    changed = true
-  else
-    enemy = ""
-    changed = true
+  if id == gmcp_id then
+    if gmcp("char.status.pos") == "Fighting" then
+      name = gmcp("char.status.enemy")
+      area = get_area()
+      -- only update if it's different enemy or there is a new seek entry
+      if name ~= last_enemy.name or area ~= last_enemy.area then 
+        DebugNote("New enemy")
+        last_enemy = {name = name, area = area}
+        window_enemy()
+        changed = true
+      end
+    elseif last_status == "Fighting" then
+      DebugNote("Fighting ended")
+      enemy = ""
+      last_enemy = {name = "", area = ""}
+      changed = true
+    end
+    last_status = gmcp("char.status.pos")
   end
 
-  -- SnD target?
   if (id == snd_id) then
     if (msg == 1) then -- New target
       window_target() -- Get the target from SnD
@@ -1432,6 +1519,11 @@ function window_broadcast(msg, id, name, text)
   end
 end -- window_broadcast --
 
+-- [[ Search DB for window enemy mob ]] --
+function window_enemy()
+  enemy = window_search_db(last_enemy.area, last_enemy.name, true)
+  enemy.name = "Enemy: " .. last_enemy.name
+end
 
 --[[ Search DB for window target mob ]]--
 function window_target()
@@ -1440,22 +1532,34 @@ function window_target()
   name = mob.name or mob.keyword
   area = mob.area or get_area()
   snd_target = window_search_db(area, name, not exists(mob.keyword))
-  if debug_mode == "on" then
-    tprint(snd_target)
-  end
   snd_target.name = "Target: " .. name
 end -- window_target --
 
+--[[ New mob in database, retry window target and enemy search ]]--
+function window_new_seek()
+  local changed = false
+  if exists(snd_target) then
+    window_target()
+    changed = true
+  end
+  if exists(enemy) then
+    window_enemy()
+    changed = true
+  end
+  if changed then window_draw() end
+end -- window_new_seek --
 
---[[ Parse database row into window mob ]]--
+--[[ Parse database row to window mob ]]--
 function row_to_window_mob(row)
   local weak = {}
+  local neutral = {}
   local strong = {}
-  local immunities = {}
-  weak, strong, immune = parse_resists(row.resistsID, row.immunitiesID)
+  local immune = {}
+  weak, neutral, strong, immune = parse_resists(row.resistsID, row.immunitiesID)
   window_mob = {
     name = row.name,
     weak = weak,
+    neutral = neutral,
     strong = strong,
     immune = immune,
     found = true
@@ -1463,27 +1567,18 @@ function row_to_window_mob(row)
   return window_mob
 end -- row_to_window_mob --
 
-
 --[[ Search DB for window mobs ]]--
-function window_search_db(area, name, snd)
-  local results = read(area, name, snd)
-  local window_mob = {name = name, weak = "", strong = "", immune = "", found = false}
+function window_search_db(area, name, exact_name)
+  local db, results = read(area, name, exact_name)
+  local window_mob = {found = false}
 
   for row in results:nrows() do
     window_mob = row_to_window_mob(row)
   end
+  results:finalize()
+  db:close()
   return window_mob
 end -- window_search_db --
-
-
---[[ New mob in database, retry window target search ]]--
-function window_new_seek()
-  if exists(snd_target) then
-    window_target()
-    window_draw()
-  end
-end -- window_new_seek --
-
 
 --[[ Draw the border and text ]]--
 function window_draw()
@@ -1529,6 +1624,9 @@ function window_draw()
         draw_text(mob.weak, weak_colour)
       end
 
+      if exists(mob.neutral) and neutral_enabled then
+        draw_text(mob.neutral, neutral_colour)
+      end
       if exists(mob.strong) and strong_enabled then
         draw_text(mob.strong, strong_colour)
       end
@@ -1548,7 +1646,6 @@ function window_draw()
   CallPlugin("abc1a0944ae4af7586ce88dc", "BufferedRepaint") -- Resizes window immediately
 end -- draw --
 
-
 -- [[ Generate a string from a whitelist for storing in SetVariable ]] --
 function whitelist_tostring(wl)
   local wl_str = ""
@@ -1558,13 +1655,12 @@ function whitelist_tostring(wl)
   return string.sub(wl_str, 1, -2)
 end -- whitelist_tostring --
 
-
 function right_click_menu()
   -- [[ Generate part of the menustring from a whitelist ]] --
-  function whitelist_tomenu(wl, type)
+  function whitelist_tomenu(wl, name)
     local menu_wl = ""
     for res, is_wl in pairs(wl) do
-      menu_wl = menu_wl .. (is_wl and "+" or "") .. type .. res .. "|"
+      menu_wl = menu_wl .. (is_wl and "+" or "") .. name .. res .. "|"
     end
     return menu_wl
   end -- whitelist_tomenu --
@@ -1584,6 +1680,16 @@ function right_click_menu()
   menustring = menustring .. (weak_threshold == -5 and "+" or "") .."Weak - -5%|<|"
   menustring = menustring .. ">Weak - Whitelist|" .. whitelist_tomenu(weak_whitelist, "Weak - ") .. "<|"
   menustring = menustring .. "Weak - Colour|<|-|"
+
+  menustring = menustring .. ">Neutral|"
+  menustring = menustring .. (neutral_enabled and "+" or "") .. "Neutral - Enabled|"
+  menustring = menustring .. ">Neutral - Threshold|"
+  menustring = menustring .. (neutral_threshold == 15 and "+" or "") .."Neutral - 15|"
+  menustring = menustring .. (neutral_threshold == 10 and "+" or "") .."Neutral - 10|"
+  menustring = menustring .. (neutral_threshold == 5 and "+" or "") .."Neutral - 5|"
+  menustring = menustring .. (neutral_threshold == 0 and "+" or "") .."Neutral - 0|<|"
+  menustring = menustring .. ">Neutral - Whitelist|" .. whitelist_tomenu(neutral_whitelist, "Neutral - ") .. "<|"
+  menustring = menustring .. "Neutral - Colour|<|-|"
 
   menustring = menustring .. ">Strong|"
   menustring = menustring .. (strong_enabled and "+" or "") .. "Strong - Enabled|"
@@ -1614,7 +1720,7 @@ function right_click_menu()
   )
 
 -- [[ Choose result ]] --
-  local redraw = true
+  local redraw_window = true
   -- General options
   if result == "Font" then
     local wanted_font = utils.fontpicker(font_name, font_size) -- font dialog
@@ -1635,7 +1741,7 @@ function right_click_menu()
   elseif result == "Short Resists" then
     short_resists_enabled = not short_resists_enabled
     SetVariable("short_resists_enabled", tostring(short_resists_enabled))
-  -- Weak options
+
   elseif result == "Weak - Enabled" then
     weak_enabled = not weak_enabled
     SetVariable("weak_enabled", tostring(weak_enabled))
@@ -1656,7 +1762,27 @@ function right_click_menu()
       weak_whitelist[res] = not weak_whitelist[res]
       SetVariable("weak_whitelist", whitelist_tostring(weak_whitelist))
     end
-  -- Strong options
+
+  elseif result == "Neutral - Enabled" then
+    neutral_enabled = not neutral_enabled
+    SetVariable("neutral_enabled", tostring(neutral_enabled))
+  elseif result == "Neutral - Colour" then
+    local new_colour = PickColour(neutral_colour)
+    if new_colour ~= -1 then
+      neutral_colour = new_colour
+      SetVariable("neutral_colour", neutral_colour)
+    end
+  elseif string.find(result, "Neutral - ") then
+    local res = string.gsub(result, "Neutral %- ", "")
+    local res_num = tonumber(res)
+    if res_num then
+      neutral_threshold = res_num
+      SetVariable("neutral_threshold", neutral_threshold)
+    else
+      neutral_whitelist[res] = not neutral_whitelist[res]
+      SetVariable("neutral_whitelist", whitelist_tostring(neutral_whitelist))
+    end
+
   elseif result == "Strong - Enabled" then
     strong_enabled = not strong_enabled
     SetVariable("strong_enabled", tostring(strong_enabled))
@@ -1677,7 +1803,7 @@ function right_click_menu()
       strong_whitelist[res] = not strong_whitelist[res]
       SetVariable("strong_whitelist", whitelist_tostring(strong_whitelist))
     end
-  -- Immune options
+
   elseif result == "Immune - Enabled" then
     immune_enabled = not immune_enabled
     SetVariable("immune_enabled", tostring(immune_enabled))
@@ -1691,12 +1817,12 @@ function right_click_menu()
     local res = string.gsub(result, "Immune %- ", "")
     immune_whitelist[res] = not immune_whitelist[res]
     SetVariable("immune_whitelist", whitelist_tostring(immune_whitelist))
-  -- Send window to Front/Back
+
   elseif result == "Bring to Front" then
     window_send_front()
   elseif result == "Send to Back" then
     window_send_back()
-  -- Reset defaults
+
   elseif result == "Reset Defaults" then
     font_name = default_font_name
     font_size = default_font_size
@@ -1709,31 +1835,34 @@ function right_click_menu()
     short_resists_enabled = false
 
     weak_enabled = true
+    neutral_enabled = true
     strong_enabled = true
     immune_enabled = true
 
     weak_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
+    neutral_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
     strong_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
     immune_whitelist = table.shallow_copy(DEFAULT_WHITELIST)
 
     weak_threshold = DEFAULT_WEAK_THRESHOLD
+    neutral_threshold = DEFAULT_NEUTRAL_THRESHOLD
     strong_threshold = DEFAULT_STRONG_THRESHOLD
 
     base_colour = DEFAULT_BASE_COLOUR
     weak_colour = DEFAULT_WEAK_COLOUR
+    neutral_colour = DEFAULT_NEUTRAL_COLOUR
     strong_colour = DEFAULT_STRONG_COLOUR
     immune_colour = DEFAULT_IMMUNE_COLOUR
     
     window_save()
     window_install()
   else
-    redraw = false -- Nothing changed, don't redraw
+    redraw_window = false -- Nothing changed, don't redraw_window
   end
 -- [[ End choose result ]] --
 
-  if redraw then window_draw() end
+  if redraw_window then window_draw() end
 end -- right_click_menu --
-
 
 startx = ""
 starty = ""
@@ -1776,11 +1905,9 @@ function ResizeMoveCallback()
   end
 end -- ResizeMoveCallback --
 
-
 function ResizeReleaseCallback()
   resize_window()
 end -- ResizeReleaseCallback --
-
 
 function MouseDown(flags, hotspot_id)
   if (hotspot_id == win.. "_resize") then
@@ -1789,14 +1916,12 @@ function MouseDown(flags, hotspot_id)
   end
 end -- MouseDown --
 
-
 function MouseUp(flags, hotspot_id, win)
   if bit.band(flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
     right_click_menu()
   end
   return true
 end -- MouseUp --
-
 
 function LeftClickOnly(flags, hotspit_id, win)
   if bit.band(flags, miniwin.hotspot_got_rh_mouse) ~= 0 then
@@ -1805,13 +1930,11 @@ function LeftClickOnly(flags, hotspit_id, win)
   return false
 end -- LeftClickOnly --
 
-
 function resize_window()
   WindowResize(win, width, height, Theme.PRIMARY_BODY)
   movewindow.add_drag_handler(win, 0, 0, 0, 0)
   window_draw()
 end -- resize_window --
-
 
 --[[ OnPluginSaveState ]]--
 function window_save()
@@ -1824,7 +1947,7 @@ function window_save()
 
   CallPlugin("462b665ecb569efbf261422f","boostMe", win)
 
-  SetVariable("short_resists_enabled", fix_bool(short_resists_enabled))
+  SetVariable("short_resists_enabled", tostring(short_resists_enabled))
 
   SetVariable("weak_enabled", tostring(weak_enabled))
   SetVariable("strong_enabled", tostring(strong_enabled))
@@ -1843,18 +1966,15 @@ function window_save()
   SetVariable("immune_colour", immune_colour)
 end -- window_save --
 
-
 --[[ OnPluginClose ]]--
 function window_close()
    WindowDelete(win)
 end
 
-
 --[[ OnPluginDisable ]]--
 function window_disable()
   WindowShow(win, false)
 end
-
 
 --[[ OnPluginEnable ]]--
 function window_enable()
@@ -1869,7 +1989,6 @@ require 'gmcphelper'
 function OnPluginInstall()
   OnHelp()
   initVars()
-  initTarget()
   window_install()
 end
 
@@ -1882,7 +2001,6 @@ function OnPluginBroadcast(msg, id, name, text)
 end
 
 function OnPluginClose()
-  db_close()
   window_close()
   OnPluginDisable()
 end
@@ -1896,7 +2014,6 @@ function OnPluginEnable()
 end
 
 -------------------- End Plugin Handler Code ---------------------
-
 
 ----------------------- Plugin Update Code -----------------------
 -- Code taken from Durel's dinv plugin, originally via Crowley
@@ -1915,12 +2032,12 @@ lua_path = Replace(xml_path, "SeekDB.xml", "SeekDB.lua")
 plugin_protocol = "HTTPS"
 plugin_prefix = "[SeekDB]"
 
-function update_check_alias()
+function update_check()
   update_plugin("check")
   ColourNote("white", "", plugin_prefix .. " Checking for updated version...")
 end
 
-function update_install_alias()
+function update_install()
   update_plugin("install")
   ColourNote("white", "", plugin_prefix .. " Checking for and installing updated version...")
 end
