@@ -26,13 +26,21 @@ Built on Anssett's SeekRep plugin. Only have one installed.
 3. In MUSHclient, File->Plugins, click Add, open SeekDB.xml.
 
 ## Usage
-### Seek the target and add it to the database (if it does not already exist):
+### Seek the target and add it to the database:
 ```
 seek <target>
 ```
 ### Search the database and display the results in miniwindow and output:
 ```
 seekdb <target> <area>
+```
+### Seek and report:
+```
+seekrep <target> [top|bot] [quantity]
+```
+### Switch seek reporting on/off:
+```
+seekrep toggle
 ```
 ### Right-click on the miniwindow to customize font, colours, whitelists, etc.
 
