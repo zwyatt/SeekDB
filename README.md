@@ -55,6 +55,7 @@ Data is stored in SeekDB.db.
 
 ## Future Updates
 - Option to show and group resist values
+- Text wrapping in miniwindow
 - Fixes for multiple database results, window updating after short resist and whitelist changes
 - Scan and con overwriting
 - Scan for mobs missing from database
