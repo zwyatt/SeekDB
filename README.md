@@ -10,7 +10,7 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 - Database safety improvements
 - Fixed window enemy swapping between <no target> and the actual enemy when aggrod
 
-### 1.51
+### 1.151
 - Added:
   - Right-click menu to the SeekDB window to customize font, colours, threshold, and damage type whitelists
   - "Short Resists" mode, Bring to Front/Send to Back and Reset to Defaults functionality
