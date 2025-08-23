@@ -2,7 +2,15 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
-### 1.15
+### 1.6
+- Triggers on seek, no more cooldown, can toggle seek reporting on/off
+- "Neutral" resists added, with customizable immunity threshold
+- Resists are now grouped if they are All Phys or All Mag the same way immunities are
+- Strong resists are now orange in output
+- Database safety improvements
+- Fixed window enemy swapping between <no target> and the actual enemy when aggrod
+
+### 1.51
 - Added:
   - Right-click menu to the SeekDB window to customize font, colours, threshold, and damage type whitelists
   - "Short Resists" mode, Bring to Front/Send to Back and Reset to Defaults functionality
@@ -10,10 +18,6 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 - Fixes:
   - Seekrep can now take puncuated mob names (apostrophes, dashes, etc.) - still no guarantee that the mob keywords actually include those, however
   - Window has a set minimum size so it can no longer be resized to disappear
-### 1.14
-- seekrep now has a 2 second cooldown to prevent data corruption
-- seekdb now accepts 'all' parameter for target and area
-- [debug mode and delete functionality added](https://github.com/zwyatt/SeekDB/tree/main?tab=readme-ov-file#debug-mode)
 
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
@@ -32,15 +36,12 @@ seekdb <target> <area>
 ```
 ### Right-click on the miniwindow to customize font, colours, whitelists, etc.
 
-The miniwindow will always display the current enemy and SnD quest/campaign/global quest or quickwhere target.
+The miniwindow displays the current enemy and SnD quest/campaign/global quest or quickwhere target, in addition to 'seekdb <target> <area>' results.
 
 Mob weaknesses are shown in green, in order from weakest to strongest.
-Mob strengths are shown in orange (magenta in the output), in order from strongest to weakest.
+Neutral resists are shown in grey, in order from weakest to strongest. Neutral resists are only shown when the number of immunities meets or exceeds the set threshold (5 by default).
+Mob strengths are shown in orange, in order from strongest to weakest.
 Mob immunites are shown in red.
-
-Strengths and weaknesses below 10% are not shown.
-
-Mob alignment is shown in output as red, white, or yellow brackets around the mob name.
 
 Data is stored in SeekDB.db.
 
@@ -50,16 +51,15 @@ Data is stored in SeekDB.db.
 - seekrep and seekdb only take one keyword as a name argument
 - Window enemy/target can only show one mob even if there are multiple database results
 - Search & Destroy quickwhere doesn't show the name of the actual mob found in SeekDB
-- It's difficult to tell what type of damage to use on mobs with a lot of immunities and no weaknesses or strengths
+- Seekdb takes Fractal Anomaly's name colour codes as literal text, it still works though
 
 ## Future Updates
 - Option to show and group resist values
-- Fixes for multiple database results, mobs with many immunities, window updating after short resist and whitelist changes
-- Trigger on seek rather than using seekrep
+- Fixes for multiple database results, window updating after short resist and whitelist changes
 - Scan and con overwriting
 - Scan for mobs missing from database
 - Database backups
-- Miscellaneous other stuff probably
+- Etc.
 
 ## Debug Mode
 ### Toggle debug mode, will show mob IDs in seekdb results and additional DebugNotes (need cleaning up)
