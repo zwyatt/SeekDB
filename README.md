@@ -28,7 +28,7 @@ Built on Anssett's SeekRep plugin. Only have one installed.
 ## Usage
 ### Seek the target and add it to the database (if it does not already exist):
 ```
-seekrep <target>
+seek <target>
 ```
 ### Search the database and display the results in miniwindow and output:
 ```
