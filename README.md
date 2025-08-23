@@ -8,7 +8,7 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 - Resists are now grouped if they are All Phys or All Mag the same way immunities are
 - Strong resists are now orange in output
 - Database safety improvements
-- Fixed window enemy swapping between <no target> and the actual enemy when aggrod
+- Fixed window enemy swapping between no target and the actual enemy when aggrod
 
 ### 1.151
 - Added:
