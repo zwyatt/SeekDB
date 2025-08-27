@@ -5,7 +5,7 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 ### 1.61
 - Seekdb now searches correctly based on whether the SnD target is from q/cp/gq or quickwhere
 - Colour codes no longer appear in coloured enemy names when fighting them
-- 'seek' without a target will now default to seeking your current enemy, or your current SnD target if not fighting
+- 'seek' without a target will now default to your enemy or your SnD
 
 ### 1.6
 - Triggers on seek, no more cooldown, can toggle seek reporting on/off
