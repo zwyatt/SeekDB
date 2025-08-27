@@ -14,7 +14,7 @@
    purpose="Report and store Seek data."
    date_written="2025-06-27 18:59:39"
    requires="5.07"
-   version="1.6"
+   version="1.61"
    save_state="y"
    >
 <description trim="y">
@@ -82,6 +82,7 @@ Seek clanskill ouput reporter and database.
 <!-- Aliases -->
 
 <aliases>
+  <alias match ="^seek$" regexp="y" enabled="y" script="seek_enemy" sequence="100" />
   <alias match="^seekrep\s(?<name>((\d*\.)?\S+))\s?(?<dir>(top|bot|all|immcheck|verbose))?\s?(?<qty>\d+)?" script="startSeek" regexp="y" enabled="y" group="seekrep" send_to="12" sequence="100" ></alias>
   <alias match="seekrep toggle" enabled="y" script="seekrep_toggle" sequence="99" />
   <alias match="^seekdb\s?(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>

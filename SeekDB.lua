@@ -1,4 +1,4 @@
---   version="1.6"
+--   version="1.61"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -79,6 +79,31 @@ function seekrep_toggle()
   end
 end
 
+function seek_enemy()
+  DebugNote("Seeking")
+  local name = ""
+  if exists(enemy) and gmcp("char.status.pos") == "Fighting" then
+    name = Replace(enemy.name, "Enemy: ", "")
+  elseif exists(snd_target) then
+    name = Replace(snd_target.name, "Target: ", "")
+  end
+  DebugNote(name)
+  if name ~= "" then
+    name = Replace(name, ",", "")
+    name = Replace(name, " a ", " ")
+    name = Replace(name, " an ", " ")
+    name = Replace(name, " of the ", " ")
+    name = Replace(name, " the ", " ")
+    name = Replace(name, " of ", " ")
+    name = Replace(name, "'s ", " ")
+    name = string.gsub(name, "^a ", "")
+    name = string.gsub(name, "^an ", "")
+    name = string.gsub(name, "^the ", "")
+    DebugNote(name)
+    Send("seek '" .. name .. "'")
+  end
+end
+
 function initTarget()
   local targetArray = {
     shortn = "",
@@ -145,12 +170,14 @@ function OnHelp ()
   local cmdColor = "@W"
   
   colorsToAnsiNote(borderColor .. "------------------" .. textColor .. " SeekDB Help " .. borderColor .. "------------------")
-  colorsToAnsiNote(borderColor .. "--== " .. textColor .. "Initial Setup" .. borderColor .. " ==--")
+  colorsToAnsiNote(borderColor .. "--==  " .. textColor .. "Initial Setup" .. borderColor .. "  ==--")
   colorsToAnsiNote(textColor .. "After the first installation, run " .. cmdColor .. "seekrep config help")
   Note()
-  colorsToAnsiNote(borderColor .. "--==" .. textColor .. " General Use " .. borderColor .. "==--")
-  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Seek and SeekRep will both add targets to the database " .. borderColor .. "=-")
-  colorsToAnsiNote(cmdColor .. "seek <target>")
+  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  General Use  " .. borderColor .. "==--")
+  colorsToAnsiNote(borderColor .. "-=  " .. textColor .. "Seek or SeekRep to add a target to the database.  " .. borderColor .. "=-")
+  colorsToAnsiNote(cmdColor .. "seek [target]")
+  colorsToAnsiNote(cmdColor .. "   [target]" .. textColor .. "    Optional. Defaults to current enemy or SnD target.")
+
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep <target> [top|bot] [quantity]")
   colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "    Required. Single keyword of target. Ordinal targets are ok (1.lasher,")
@@ -162,16 +189,16 @@ function OnHelp ()
   colorsToAnsiNote(cmdColor .. "               verbose" .. textColor .. " is mostly used for debugging right now.")
   colorsToAnsiNote(cmdColor .. "   [quantity]" .. textColor .. "  Optional. Restricts quantity of results.")
   Note()
-  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Switch SeekRep on and off for normal seek. Using SeekRep on a target will switch it on. " .. borderColor .. "=-")
+  colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Switch SeekRep on and off for normal seek. Using SeekRep on a target will switch it on.  " .. borderColor .. "=-")
   colorsToAnsiNote(cmdColor .. "seekrep toggle")
   Note()
-  colorsToAnsiNote(borderColor .. "-= " .. textColor .. "Search for a mob in the database " .. borderColor .. "=-")
-  colorsToAnsiNote(cmdColor .. "seekdb <target> <area>")
-  colorsToAnsiNote(cmdColor .. "   <target>" .. textColor .. "   Optional. Single keyword of target. 'all' to search for all mobs in the area.")
-  colorsToAnsiNote(cmdColor .. "   <area>" .. textColor .. "     Optional. Defaults to current area. 'all' to search in every area. Must match")
+  colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Search for a mob in the database  " .. borderColor .. "=-")
+  colorsToAnsiNote(cmdColor .. "seekdb [target] [area]")
+  colorsToAnsiNote(cmdColor .. "   [target]" .. textColor .. "   Optional. Single keyword of target. 'all' to search for all mobs in the area.")
+  colorsToAnsiNote(cmdColor .. "   [area]" .. textColor .. "     Optional. Defaults to current area. 'all' to search in every area. Must match")
   colorsToAnsiNote(textColor .. "              area keyword exactly.")
   Note()
-  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples   " .. borderColor .. "==--")
+  colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples  " .. borderColor .. "==--")
   colorsToAnsiNote(cmdColor .. "seekrep lasher top 3" .. textColor .. "  Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his highest 3 resistances.")
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher 5" .. textColor .. "      Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his lowest 5 resistances.")
@@ -1486,7 +1513,7 @@ function window_broadcast(msg, id, name, text)
 
   if id == gmcp_id then
     if gmcp("char.status.pos") == "Fighting" then
-      name = gmcp("char.status.enemy")
+      name = strip_colours(gmcp("char.status.enemy"))
       area = get_area()
       -- only update if it's different enemy or there is a new seek entry
       if name ~= last_enemy.name or area ~= last_enemy.area then 
@@ -1505,6 +1532,7 @@ function window_broadcast(msg, id, name, text)
   end
 
   if (id == snd_id) then
+    -- print(msg, id, name, text)
     if (msg == 1) then -- New target
       window_target() -- Get the target from SnD
       changed = true
@@ -1531,7 +1559,7 @@ function window_target()
   mob = json.decode(target_as_json)
   name = mob.name or mob.keyword
   area = mob.area or get_area()
-  snd_target = window_search_db(area, name, not exists(mob.keyword))
+  snd_target = window_search_db(area, name, exists(mob.name))
   snd_target.name = "Target: " .. name
 end -- window_target --
 
