@@ -2,6 +2,11 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.61
+- Seekdb now searches correctly based on whether the SnD target is from q/cp/gq or quickwhere
+- Colour codes no longer appear in coloured enemy names when fighting them
+- 'seek' without a target will now default to seeking your current enemy, or your current SnD target if not fighting
+
 ### 1.6
 - Triggers on seek, no more cooldown, can toggle seek reporting on/off
 - "Neutral" resists added, with customizable immunity threshold
@@ -9,15 +14,6 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 - Strong resists are now orange in output
 - Database safety improvements
 - Fixed window enemy swapping between no target and the actual enemy when aggrod
-
-### 1.151
-- Added:
-  - Right-click menu to the SeekDB window to customize font, colours, threshold, and damage type whitelists
-  - "Short Resists" mode, Bring to Front/Send to Back and Reset to Defaults functionality
-  - NOTE: Window does not update immediately after toggling Short Resists mode or making whitelist changes
-- Fixes:
-  - Seekrep can now take puncuated mob names (apostrophes, dashes, etc.) - still no guarantee that the mob keywords actually include those, however
-  - Window has a set minimum size so it can no longer be resized to disappear
 
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
@@ -29,6 +25,10 @@ Built on Anssett's SeekRep plugin. Only have one installed.
 ### Seek the target and add it to the database:
 ```
 seek <target>
+```
+### Seek your current enemy, or your current SnD target if not fighting:
+```
+seek
 ```
 ### Search the database and display the results in miniwindow and output:
 ```
@@ -54,13 +54,11 @@ Mob immunites are shown in red.
 Data is stored in SeekDB.db.
 
 ## Known Issues
-- SnD target results can be incorrect if multiple mobs have the same keywords i.e. the lumberjack, the lumberjack's wife. This is a result of having both quest/cp/etc targets AND quickwhere targets - which use keywords instead of exact mob name - in the window.
 - Window does not update immediately after toggling Short Resists mode or whitelist changes
 - The order of damage types in whitelist menu can change, but they still work correctly
 - seekrep and seekdb only take one keyword as a name argument
 - Window enemy/target can only show one mob even if there are multiple database results
 - Search & Destroy quickwhere doesn't show the name of the actual mob found in SeekDB
-- Seekdb takes Fractal Anomaly's name colour codes as literal text, it still works though
 
 ## Future Updates
 - Option to show and group resist values
