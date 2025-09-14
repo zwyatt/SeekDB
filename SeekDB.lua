@@ -1,4 +1,4 @@
---   version="1.61"
+--   version="1.7"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -39,8 +39,19 @@ function print_alternating_note(messages, regular_color, highlight_color, backgr
     end
     print("")
 end
--------------------------- End DebugNote -------------------------
 
+function test_print(xs)
+  local test = ""
+  for i, v in ipairs(xs) do
+    if v == true then
+      test = test .. "true, "
+    else
+      test = test .. v.name .. " " .. v.value .. ", "
+    end
+  end
+  print(test)
+end
+-------------------------- End DebugNote -------------------------
 
 function seek_trigger_capture(name, line, args)
   table.insert(trigger_lines, line)
@@ -59,6 +70,7 @@ function set_omit(value)
 end
 
 function seek_init()
+  seek_now = false
   seekrep_enabled = tostring(GetVariable("seekrep_enabled")) or true
   seekrep_enabled = seekrep_enabled == "true"
   if not seekrep_enabled then set_omit("n") end
@@ -87,7 +99,7 @@ function seek_enemy()
   elseif exists(snd_target) then
     name = Replace(snd_target.name, "Target: ", "")
   end
-  DebugNote(name)
+  name = string.lower(name)
   if name ~= "" then
     name = Replace(name, ",", "")
     name = Replace(name, " a ", " ")
@@ -95,11 +107,16 @@ function seek_enemy()
     name = Replace(name, " of the ", " ")
     name = Replace(name, " the ", " ")
     name = Replace(name, " of ", " ")
+    name = Replace(name, " from ", " ")
+    name = Replace(name, " and ", " ")
     name = Replace(name, "'s ", " ")
+    name = Replace(name, "?", "")
+    name = Replace(name, "!", "")
     name = string.gsub(name, "^a ", "")
     name = string.gsub(name, "^an ", "")
     name = string.gsub(name, "^the ", "")
-    DebugNote(name)
+    name = string.gsub(name, "-%a* ", " ")
+    name = string.gsub(name, "-%a*$", "")
     Send("seek '" .. name .. "'")
   end
 end
@@ -174,7 +191,7 @@ function OnHelp ()
   colorsToAnsiNote(textColor .. "After the first installation, run " .. cmdColor .. "seekrep config help")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  General Use  " .. borderColor .. "==--")
-  colorsToAnsiNote(borderColor .. "-=  " .. textColor .. "Seek or SeekRep to add a target to the database.  " .. borderColor .. "=-")
+  colorsToAnsiNote(borderColor .. "-=  " .. textColor .. "Seek or SeekRep to add a target to the database  " .. borderColor .. "=-")
   colorsToAnsiNote(cmdColor .. "seek [target]")
   colorsToAnsiNote(cmdColor .. "   [target]" .. textColor .. "    Optional. Defaults to current enemy or SnD target.")
 
@@ -189,23 +206,27 @@ function OnHelp ()
   colorsToAnsiNote(cmdColor .. "               verbose" .. textColor .. " is mostly used for debugging right now.")
   colorsToAnsiNote(cmdColor .. "   [quantity]" .. textColor .. "  Optional. Restricts quantity of results.")
   Note()
-  colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Switch SeekRep on and off for normal seek. Using SeekRep on a target will switch it on.  " .. borderColor .. "=-")
+  colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Switch SeekRep on and off for normal seek  " .. borderColor .. "=-")
   colorsToAnsiNote(cmdColor .. "seekrep toggle")
   Note()
   colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Search for a mob in the database  " .. borderColor .. "=-")
-  colorsToAnsiNote(cmdColor .. "seekdb [target] [area]")
+  colorsToAnsiNote(cmdColor .. "seekdb find [target] [area]")
   colorsToAnsiNote(cmdColor .. "   [target]" .. textColor .. "   Optional. Single keyword of target. 'all' to search for all mobs in the area.")
   colorsToAnsiNote(cmdColor .. "   [area]" .. textColor .. "     Optional. Defaults to current area. 'all' to search in every area. Must match")
   colorsToAnsiNote(textColor .. "              area keyword exactly.")
+  Note()
+  colorsToAnsiNote(borderColor .. "-=" .. textColor .. "  Show number of mobs weak/strong/immune to each damtype in the area  " .. borderColor .. "=-")
+  colorsToAnsiNote(cmdColor .. "seekdb summary [full|totals|average]")
+  colorsToAnsiNote(cmdColor .. "   [full|totals|average]" .. textColor .. "   Optional. Defaults to full, showing totals and average.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Examples  " .. borderColor .. "==--")
   colorsToAnsiNote(cmdColor .. "seekrep lasher top 3" .. textColor .. "  Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his highest 3 resistances.")
   Note()
   colorsToAnsiNote(cmdColor .. "seekrep lasher 5" .. textColor .. "      Performs " .. cmdColor .. "seek" .. textColor .. " on lasher, then prints his lowest 5 resistances.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekdb imp" .. textColor .. "            Searches DB for all mobs with 'imp' in the name in the current area.")
+  colorsToAnsiNote(cmdColor .. "seekdb find imp" .. textColor .. "            Searches DB for all mobs with 'imp' in the name in the current area.")
   Note()
-  colorsToAnsiNote(cmdColor .. "seekdb all aylor" .. textColor .. "      Searches DB for all mobs in the area 'aylor'.")
+  colorsToAnsiNote(cmdColor .. "seekdb find all aylor" .. textColor .. "      Searches DB for all mobs in the area 'aylor'.")
   Note()
   colorsToAnsiNote(borderColor .. "--==" .. textColor .. "  Right-Click Menu   " .. borderColor .. "==--")
   colorsToAnsiNote(textColor .. "Right-click on the miniwindow to customize the font, colours, whitelists, etc.")
@@ -218,9 +239,7 @@ end
 
 
 function startSeek(name, line, args)
-  seekrep_enabled = true
-  SetVariable("seekrep_enabled", tostring(seekrep_enabled))
-  set_omit("y")
+  seek_now = true
   target = args.name
   dir = args.dir or "nil"
   qty = tonumber(args.qty) or -1
@@ -392,7 +411,8 @@ function processCapture(lines, db_ready)
 
   new_seek(targetArray)
 
-  if not seekrep_enabled then return end
+  if not seekrep_enabled and not seek_now then return end
+  seek_now = false
 
   if dir == "all" then
     redrawSeek(targetArray)
@@ -619,11 +639,6 @@ function sql_prepare(query)
   local result = assert(db:prepare(query))
   return db, result
 end -- sql_prepare --
-
-function error_handler(context, error)
-  Note(context)
-  Note(error)
-end
 
 function create_tables()
   local query = [[
@@ -853,6 +868,36 @@ end -- delete_confirm --
 
 
 --[[ Helpers ]]--
+function exists(x)
+  return x and x ~= ""
+end -- exists --
+
+function is_empty(xs)
+  if exists(xs) then
+    return next(xs) == nil
+  else
+    return true
+  end
+end -- is_empty --
+
+function fix_sql(sql)
+  if exists(sql) then
+    return Replace(sql, "'", "''", true)
+  end
+  return nil
+end -- fix_sql --
+
+function get_area()
+  return gmcp("room.info.zone")
+end -- get_area --
+
+-- [[ DB stores immunity value as 0 or 1, use to convert targetArray value to compare ]]
+function fix_bool(val)
+  if val then
+    return 1
+  end
+  return 0
+end
 
 function table.shallow_copy(xs)
   local ys = {}
@@ -868,6 +913,28 @@ function table.merge(xs, ys)
   end
   return xs
 end -- merge --
+
+function sort_ascending(a, b)
+  if a.name == "All Physical" then
+    return true
+  elseif a.name == "All Magic" then
+    return true
+  elseif b.name == "All Physical" or b.name == "All Magic" then
+    return false
+  end
+  return a.value < b.value
+end -- sort_ascending --
+
+function sort_descending(a, b)
+  if a.name == "All Physical" then
+    return true
+  elseif a.name == "All Magic" then
+    return true
+  elseif b.name == "All Physical" or b.name == "All Magic" then
+    return false
+  end
+  return a.value > b.value
+end
 
 evil = "@r"
 neutral_mob = "@w"
@@ -912,29 +979,6 @@ function align_colour(align)
   DebugNote("Getting align_colour")
   return aligns[align]
 end -- align_colour --
-
-function exists(x)
-  return x and x ~= ""
-end -- exists --
-
-function fix_sql(sql)
-  if exists(sql) then
-    return Replace(sql, "'", "''", true)
-  end
-  return nil
-end -- fix_sql --
-
-function get_area()
-  return gmcp("room.info.zone")
-end -- get_area --
-
--- [[ DB stores immunity value as 0 or 1, use to convert targetArray value to compare ]]
-function fix_bool(val)
-  if val then
-    return 1
-  end
-  return 0
-end
 
 --[[ End helpers ]]--
 
@@ -1126,7 +1170,7 @@ function format_output(mob)
   local neutral = ""
   local strong = ""
   local immune = ""
-  weak, neutral, strong, immune = parse_resists(mob.resistsID, mob.immunitiesID)
+  weak, neutral, strong, immune = conc_resists(parse_resists(mob.resistsID, mob.immunitiesID))
 
   if exists(weak) then
     output = output .. "@w| @G" .. weak .. " "
@@ -1222,7 +1266,7 @@ function group_resists(resists_db, immunities_db)
   local strong = type_merge(strong_phys, strong_mag, strong_whitelist)
   local immune = type_merge(immune_phys, immune_mag, immune_whitelist)
   local neutral = {}
-  if #immune >= neutral_threshold then
+  if #immune >= neutral_threshold or #strong >= neutral_threshold then
     neutral = type_merge(neutral_phys, neutral_mag, neutral_whitelist)
   end
   return weak, neutral, strong, immune
@@ -1230,30 +1274,10 @@ end -- group_resists --
 
 --[[ Sort weak in ascending order and strong in descending order ]]--
 function sort_resists(weak, neutral, strong)
-  function sort_ascending(a, b)
-    if a.name == "All Physical" then
-      return true
-    elseif a.name == "All Magic" then
-      return true
-    elseif b.name == "All Physical" or b.name == "All Magic" then
-      return false
-    end
-    return a.value < b.value
-  end
-
   DebugNote("Sorting resists")
   table.sort(weak, sort_ascending)
   table.sort(neutral, sort_ascending)
-  table.sort(strong, function (a, b)
-    if a.name == "All Physical" then
-      return true
-    elseif a.name == "All Magic" then
-      return true
-    elseif b.name == "All Physical" or b.name == "All Magic" then
-      return false
-    end
-    return a.value > b.value
-  end)
+  table.sort(strong, sort_descending)
   return weak, neutral, strong
 end -- sort_resists --
 
@@ -1284,18 +1308,30 @@ short_resists = {
 
 SEPARATOR = ", "
 
+function conc(resists)
+  local conced = {}
+
+  for i, res in ipairs(resists) do
+    local name = res.name
+    if short_resists_enabled then name = short_resists[name] end
+    if res.value then
+      if res.value > 1 or res.value < 0 then
+        if res.avg then
+          name = name .. " " .. math.floor(res.value + 0.5) .. "%"
+        elseif res.summary then
+          name = name .. " " .. res.value
+        end
+      end
+    end
+    table.insert(conced, name)
+  end
+  return table.concat(conced, SEPARATOR)
+end -- conc --
+
 --[[ Concatenate resists/immunities to strings ]]--
 function conc_resists(weak, neutral, strong, immune)
   DebugNote("Concatenating resists")
-  function conc(resists)
-    local conced = {}
 
-    for i, res in ipairs(resists) do
-      if short_resists_enabled then res.name = short_resists[res.name] end
-      table.insert(conced, res.name)
-    end
-    return table.concat(conced, SEPARATOR)
-  end
   weak = conc(weak)
   neutral = conc(neutral)
   strong = conc(strong)
@@ -1306,7 +1342,6 @@ end -- conc_resists --
 --[[
   - Group resists by weak and strong, filter by threshold
   - Sort weak/strong
-  - String concatenate
 ]]--
 function parse_resists(resists_id, immunities_id)
   DebugNote("Parsing resists")
@@ -1316,7 +1351,7 @@ function parse_resists(resists_id, immunities_id)
   db1:close()
   db2:close()
   weak, neutral, strong = sort_resists(weak, neutral, strong)
-  return conc_resists(weak, neutral, strong, immune)
+  return weak, neutral, strong, immune
 end -- parse_resists --
 
 ------------------------ End Database Code -----------------------
@@ -1534,9 +1569,11 @@ function window_broadcast(msg, id, name, text)
   if (id == snd_id) then
     -- print(msg, id, name, text)
     if (msg == 1) then -- New target
+      DebugNote("New target")
       window_target() -- Get the target from SnD
       changed = true
     elseif (msg == 2) then -- Target cleared
+      DebugNote("Target cleared")
       snd_target = ""
       changed = true
     end
@@ -1608,36 +1645,192 @@ function window_search_db(area, name, exact_name)
   return window_mob
 end -- window_search_db --
 
+summary = ""
+
+--[[ Sum the number of mobs weak/strong/immune to each damage type ]]
+function area_summary(name, line, args)
+  local totals, avg = false
+  local cmd = args.cmd or "full"
+  if cmd == "full" then
+    totals = true
+    avg = true
+  elseif cmd == "totals" then
+    totals = true
+  elseif cmd == "average" then
+    avg = true
+  end
+
+  local db, results = read(get_area())
+  local target = initTarget()
+  local weak = {}
+  local neutral = {}
+  local strong = {}
+  local immune = {}
+  local total = {}
+  local mobs = 0
+
+  for i, v in ipairs(target.resists) do -- Initialize all totals to 0
+    local name = v.resName
+    weak[name] = 0
+    neutral[name] = 0
+    strong[name] = 0
+    immune[name] = 0
+    total[name] = 0
+  end
+
+  for row in results:nrows() do -- for each mob
+    mobs = mobs + 1
+    local db1, db_resists = read_resists(row.resistsID)
+    local db2, db_immunes = read_immunities(row.immunitiesID)
+    db_resists:step()
+    db_immunes:step()
+    local resists = db_resists:get_named_values()
+    local immunes = db_immunes:get_named_values()
+    db_resists:finalize()
+    db_immunes:finalize()
+    db1:close()
+    db2:close()
+
+    for i, v in ipairs(target.resists) do -- for each resist/immunity
+      local name = v.resName
+      local res = resists[string.lower(name)]
+      local imm = immunes[string.lower(name)]
+
+      if totals then -- sum
+        if res <= weak_threshold then
+          weak[name] = weak[name] + 1
+        elseif res >= strong_threshold then
+          strong[name] = strong[name] + 1
+        elseif imm == 1 then
+          immune[name] = immune[name] + 1
+        else
+          neutral[name] = neutral[name] + 1
+        end
+      end
+      total[name] = total[name] + res
+    end
+  end
+
+  results:finalize()
+  db:close()
+
+  function mobify(xs, avg) -- format for conc()
+    local mobbed = {}
+    for k, v in pairs(xs) do
+      if v > 0 or v < 0 then
+        table.insert(mobbed, {name = k, value = v, summary = true, avg = avg})
+      end
+    end
+    if #mobbed > 0 then
+      if avg then
+        table.sort(mobbed, sort_ascending)
+      else
+        table.sort(mobbed, sort_descending)
+      end
+    end
+    return mobbed
+  end
+
+  local average = {}
+  if avg then
+    for k, v in pairs(total) do
+      average[k] = v / mobs
+    end
+    average = mobify(average, true)
+  end
+
+  if totals then
+    weak = mobify(weak)
+    neutral = mobify(neutral)
+    strong = mobify(strong)
+    immune = mobify(immune)
+  end
+
+  summary = { 
+    name = "Area: " .. get_area() .. " || Mobs in database: " .. mobs,
+    average = average,
+    weak = weak,
+    -- neutral = neutral,
+    strong = strong,
+    immune = immune,
+    found = true
+  }
+
+  colorsToAnsiNote("@WArea: " .. get_area() .. " || Mobs in database: " .. mobs)
+  if not is_empty(average) then
+    colorsToAnsiNote("@w" .. conc(average))
+  end
+  if not is_empty(weak) then
+    colorsToAnsiNote("@G" .. conc(weak))
+  end
+  if not is_empty(strong) then
+    colorsToAnsiNote("@x208" .. conc(strong))
+  end
+  if not is_empty(immune) then
+    colorsToAnsiNote("@R" .. conc(immune))
+  end
+  window_draw()
+end -- area_summary --
+
 --[[ Draw the border and text ]]--
 function window_draw()
-  local win_text = {}
-  -- Border
-  bodyleft, bodytop, bodyright, bodybottom = Theme.DrawBorder(win)
-  WindowRectOp(win, 2, bodyleft, bodytop, bodyright+1, bodybottom+1, Theme.PRIMARY_BODY) -- blank
-
   local left = LEFT_MARGIN
   local top = 0
   local line = 1
 
-  if (exists(enemy)) then -- Currently fighting
-    table.insert(win_text, enemy)
-  else
-    table.insert(win_text, {name = "Enemy: <no enemy>", found = true})
-  end
+  local win_text = {}
 
-  if (exists(snd_target)) then -- Search and Destroy target
-    table.insert(win_text, snd_target)
-  else
-    table.insert(win_text, {name = "Target: <no target>", found = true})
-  end
-
-  win_text = table.merge(win_text, seekdb_results)
+  -- Border
+  bodyleft, bodytop, bodyright, bodybottom = Theme.DrawBorder(win)
+  WindowRectOp(win, 2, bodyleft, bodytop, bodyright+1, bodybottom+1, Theme.PRIMARY_BODY) -- blank
 
   function draw_text(text, colour)
     top = TOP_MARGIN + (line - 1) * line_height
     WindowText(win, font_id, text, left, top, bodyright, bodybottom, colour, false)
     line = line + 1
+  end -- draw_text --
+
+  function prepare_text(resists, enabled, colour)
+    function wrap(head)
+      local head = table.shallow_copy(head)
+      local tail = {}
+      local txt = conc(head)
+      local txtlen = WindowTextWidth(win, font_id, txt)
+
+      while txtlen + left >= width do
+        local pop = table.remove(head, #head)
+        table.insert(tail, 1, pop)
+        txt = conc(head) .. ","
+        txtlen = WindowTextWidth(win, font_id, txt)
+      end
+      draw_text(txt, colour)
+      return tail
+    end
+
+    if enabled then
+      while not is_empty(resists) do
+        resists = wrap(resists)
+      end
+    end
+  end -- prepare_text --
+
+  if exists(enemy) then -- Currently fighting
+    table.insert(win_text, enemy)
+  else
+    table.insert(win_text, {name = "Enemy: <no enemy>", found = true})
   end
+
+  if exists(snd_target) then -- Search and Destroy target
+    table.insert(win_text, snd_target)
+  else
+    table.insert(win_text, {name = "Target: <no target>", found = true})
+  end
+
+  if exists(summary) then -- Area summary
+    table.insert(win_text, summary)
+  end
+
+  win_text = table.merge(win_text, seekdb_results)
 
   -- Draw the text lines
   for i, mob in ipairs(win_text) do
@@ -1648,20 +1841,11 @@ function window_draw()
     if not mob.found then
       draw_text("<not found in SeekDB>", base_colour)
     else
-      if exists(mob.weak) and weak_enabled then
-        draw_text(mob.weak, weak_colour)
-      end
-
-      if exists(mob.neutral) and neutral_enabled then
-        draw_text(mob.neutral, neutral_colour)
-      end
-      if exists(mob.strong) and strong_enabled then
-        draw_text(mob.strong, strong_colour)
-      end
-
-      if exists(mob.immune) and immune_enabled then
-        draw_text(mob.immune, immune_colour)
-      end
+      prepare_text(mob.average, true, base_colour)
+      prepare_text(mob.weak, weak_enabled, weak_colour)
+      prepare_text(mob.neutral, neutral_enabled, neutral_colour)
+      prepare_text(mob.strong, strong_enabled, strong_colour)
+      prepare_text(mob.immune, immune_enabled, immune_colour)
     end
 
     line = line + 1 -- Line break between mobs
