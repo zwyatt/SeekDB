@@ -2,18 +2,18 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.7
+- New 'seekdb summary' command to summarize an area's mobs' resists/immunities
+- 'seekdb find [target] [area]' is now used to search the database instead of 'seekdb'
+- 'seek' default for enemy/SnD target improved
+- Included number of strong resists to the neutral threshold, mobs with many strengths will now show neutral resists
+- Using 'seekrep' no longer toggles seekrep reporting on for every seek
+- Text in the window now wraps
+
 ### 1.61
 - Seekdb now searches correctly based on whether the SnD target is from q/cp/gq or quickwhere
 - Colour codes no longer appear in coloured enemy names when fighting them
 - 'seek' without a target will now default to your enemy or your SnD
-
-### 1.6
-- Triggers on seek, no more cooldown, can toggle seek reporting on/off
-- "Neutral" resists added, with customizable immunity threshold
-- Resists are now grouped if they are All Phys or All Mag the same way immunities are
-- Strong resists are now orange in output
-- Database safety improvements
-- Fixed window enemy swapping between no target and the actual enemy when aggrod
 
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
@@ -32,7 +32,7 @@ seek
 ```
 ### Search the database and display the results in miniwindow and output:
 ```
-seekdb <target> <area>
+seekdb find <target> <area>
 ```
 ### Seek and report:
 ```
@@ -41,6 +41,10 @@ seekrep <target> [top|bot] [quantity]
 ### Switch seek reporting on/off:
 ```
 seekrep toggle
+```
+### Show number of mobs weak/strong/immune to each damtype in the area:
+```
+seekdb summary [full|totals|average]
 ```
 ### Right-click on the miniwindow to customize font, colours, whitelists, etc.
 
