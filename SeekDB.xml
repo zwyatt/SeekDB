@@ -14,7 +14,7 @@
    purpose="Report and store Seek data."
    date_written="2025-06-27 18:59:39"
    requires="5.07"
-   version="1.7"
+   version="1.71"
    save_state="y"
    >
 <description trim="y">
@@ -38,7 +38,7 @@ Seek clanskill ouput reporter and database.
 <triggers>
    <trigger
       name="seek_start"
-      enabled="y"
+      enabled="n"
       match="^-{64}$"
       regexp="y"
       omit_from_output="y"
@@ -65,24 +65,40 @@ Seek clanskill ouput reporter and database.
       enabled="n"
       match="^-{64}$"
       regexp="y"
-      omit_from_output="y"      
+      omit_from_output="y"
       sequence="100"
       script="seek_trigger_end"
       send_to="12"
    >
       <send>
-         EnableTrigger("seek_start", true)
+         EnableTrigger("seek_start", false)
          EnableTrigger("seek_capture", false)
-         EnableTrigger("seek_end, false")
+         EnableTrigger("seek_end", false)
       </send>
    </trigger>
+   <trigger
+      name="seek_fail"
+      enabled="y"
+      match="^You fail to seek your target correctly.|Nobody here with that name.$"
+      regexp="y"
+      omit_from_output="n"      
+      sequence="100"
+      send_to="12"
+   >
+      <send>
+         EnableTrigger("seek_start", false)
+         EnableTrigger("seek_capture", false)
+         EnableTrigger("seek_end", false)
+      </send>
+   </trigger>   
 </triggers>
 
 
 <!-- Aliases -->
 
 <aliases>
-  <alias match ="^seek$" regexp="y" enabled="y" script="seek_enemy" sequence="100" />
+  <alias match="^seek$" regexp="y" enabled="y" script="seek_enemy" sequence="100" />
+  <alias match="^seek\s(?<name>(.*))" regexp="y" enabled="y" script="seek_name" sequence="101" />
   <alias match="^seekrep\s(?<name>((\d*\.)?\S+))\s?(?<dir>(top|bot|all|immcheck|verbose))?\s?(?<qty>\d+)?" script="startSeek" regexp="y" enabled="y" group="seekrep" send_to="12" sequence="100" ></alias>
   <alias match="seekrep toggle" enabled="y" script="seekrep_toggle" sequence="99" />
   <alias match="^seekdb find\s?(?<name>(\S+))?\s?(?<area>(\S+))?" script="read_seekdb" regexp="y" enabled="y" sequence="100"></alias>
@@ -103,7 +119,7 @@ Seek clanskill ouput reporter and database.
 
 <script>
 <![CDATA[
-dofile(GetPluginInfo(GetPluginID(), 20).."SeekDB.lua")
+dofile(GetPluginInfo(GetPluginID(), 20).."SeekDB - Copy.lua")
 ]]>
 </script> 
 

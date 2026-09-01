@@ -1,4 +1,4 @@
---   version="1.7"
+--   version="1.71"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -92,7 +92,7 @@ function seekrep_toggle()
 end
 
 function seek_enemy()
-  DebugNote("Seeking")
+  DebugNote("Seeking [seek_enemy]")
   local name = ""
   if exists(enemy) and gmcp("char.status.pos") == "Fighting" then
     name = Replace(enemy.name, "Enemy: ", "")
@@ -117,8 +117,19 @@ function seek_enemy()
     name = string.gsub(name, "^the ", "")
     name = string.gsub(name, "-%a* ", " ")
     name = string.gsub(name, "-%a*$", "")
-    Send("seek '" .. name .. "'")
+    local command = "seek '" .. name  .. "'"
+    EnableTrigger("seek_start", true)
+    Send(command)
   end
+end
+
+function seek_name(name, line, args)
+  DebugNote("Seeking [seek_name]")
+  local name = args.name
+
+  local command = "seek '" .. name .. "'"
+  EnableTrigger("seek_start", true)
+  Send(command)
 end
 
 function initTarget()
@@ -239,12 +250,14 @@ end
 
 
 function startSeek(name, line, args)
+  DebugNote("Seeking [startSeek]")
   seek_now = true
   target = args.name
   dir = args.dir or "nil"
   qty = tonumber(args.qty) or -1
 
   local command = "seek " .. target
+  EnableTrigger("start_seek", true)
   Send(command)
 end
 
