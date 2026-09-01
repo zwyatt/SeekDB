@@ -2,6 +2,9 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.71
+- Seek capture no longer triggers on 'skills combat' output (and shouldn't trigger on anything else unexpected, either)
+
 ### 1.7
 - New 'seekdb summary' command to summarize an area's mobs' resists/immunities
 - 'seekdb find [target] [area]' is now used to search the database instead of 'seekdb'
@@ -9,11 +12,6 @@ Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 - Included number of strong resists to the neutral threshold, mobs with many strengths will now show neutral resists
 - Using 'seekrep' no longer toggles seekrep reporting on for every seek
 - Text in the window now wraps
-
-### 1.61
-- Seekdb now searches correctly based on whether the SnD target is from q/cp/gq or quickwhere
-- Colour codes no longer appear in coloured enemy names when fighting them
-- 'seek' without a target will now default to your enemy or your SnD
 
 ## Installation
 Built on Anssett's SeekRep plugin. Only have one installed.
