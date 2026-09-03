@@ -119,7 +119,7 @@ Seek clanskill ouput reporter and database.
 
 <script>
 <![CDATA[
-dofile(GetPluginInfo(GetPluginID(), 20).."SeekDB - Copy.lua")
+dofile(GetPluginInfo(GetPluginID(), 20).."SeekDB.lua")
 ]]>
 </script> 
 
