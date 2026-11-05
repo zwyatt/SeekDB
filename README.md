@@ -2,6 +2,9 @@
 Aardwolf MUSHclient plugin to report and store Seekers clanskill Seek data.
 
 ## Updates:
+### 1.72
+- Manual 'seekrep' command now does seekrep things
+
 ### 1.71
 - Seek capture no longer triggers on 'skills combat' output (and shouldn't trigger on anything else unexpected, either)
 
