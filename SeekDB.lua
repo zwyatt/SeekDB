@@ -1,4 +1,4 @@
---   version="1.71"
+--   version="1.72"
 require 'wrapped_captures'
 require 'aardwolf_colors'
 require 'tprint'
@@ -117,16 +117,27 @@ function seek_enemy()
     name = string.gsub(name, "^the ", "")
     name = string.gsub(name, "-%a* ", " ")
     name = string.gsub(name, "-%a*$", "")
-    local command = "seek '" .. name  .. "'"
-    EnableTrigger("seek_start", true)
-    Send(command)
+    seek(name)
   end
 end
 
 function seek_name(name, line, args)
   DebugNote("Seeking [seek_name]")
   local name = args.name
+  seek(name)
+end
 
+function seekrep(name, line, args)
+  DebugNote("Seeking [startSeek]")
+  seek_now = true
+  set_omit("y")
+  local name = args.name
+  dir = args.dir or "nil"
+  qty = tonumber(args.qty) or -1
+  seek(name)
+end
+
+function seek(name)
   local command = "seek '" .. name .. "'"
   EnableTrigger("seek_start", true)
   Send(command)
@@ -246,19 +257,6 @@ function OnHelp ()
   colorsToAnsiNote(cmdColor .. "seekdb update check" .. textColor .. "   Checks if there's an update to the plugin.")
   colorsToAnsiNote(cmdColor .. "seekdb update install" .. textColor .. " Installs any available updates to this plugin.")
   colorsToAnsiNote(borderColor .. "--------------------------------------------------")
-end
-
-
-function startSeek(name, line, args)
-  DebugNote("Seeking [startSeek]")
-  seek_now = true
-  target = args.name
-  dir = args.dir or "nil"
-  qty = tonumber(args.qty) or -1
-
-  local command = "seek " .. target
-  EnableTrigger("start_seek", true)
-  Send(command)
 end
 
 function processCapture(lines, db_ready)
@@ -424,7 +422,13 @@ function processCapture(lines, db_ready)
 
   new_seek(targetArray)
 
-  if not seekrep_enabled and not seek_now then return end
+  if not seekrep_enabled then
+    if seek_now then -- Manual seekrep command, but seekrep is off, turn omit back off after
+      set_omit("n")
+    else -- Seekrep is off and it was not a manual seekrep, skip seekrep output
+      return
+    end
+  end
   seek_now = false
 
   if dir == "all" then
